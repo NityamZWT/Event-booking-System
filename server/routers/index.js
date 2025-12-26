@@ -1,0 +1,8 @@
+const express = require('express')
+const router = express.Router()
+
+//Import Routes
+router.use('/auth', require('./auth.routes'))
+router.use('/event', require('./event.routes'))
+
+module.exports = router
