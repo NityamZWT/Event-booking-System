@@ -1,50 +1,72 @@
 module.exports = (sequelize, DataTypes) => {
   const Booking = sequelize.define(
-    "Booking",
+    'Booking',
     {
       id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        autoIncrement: true,
+        autoIncrement: true
       },
-      userId: {
+      user_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id'
+        }
       },
-      eventId: {
+      event_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        references: {
+          model: 'events',
+          key: 'id'
+        }
       },
-      ticket_count: {
-        type: DataTypes.INTEGER,
+      attendee_name: {
+        type: DataTypes.STRING(100),
+        allowNull: false
+      },
+      booking_amount: {
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         validate: {
-          min: 1,
-        },
+          min: 0
+        }
       },
+      quantity: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1,
+        validate: {
+          min: 1
+        }
+      }
     },
     {
-      tableName: "bookings",
+      tableName: 'bookings',
       timestamps: true,
+      underscored: true,
+      paranoid: true,
       indexes: [
         {
-          unique: true,
-          fields: ["userId", "eventId"], // prevent duplicate booking
+          fields: ['user_id']
         },
-      ],
+        {
+          fields: ['event_id']
+        }
+      ]
     }
   );
 
-  /* ================= ASSOCIATIONS ================= */
   Booking.associate = (models) => {
     Booking.belongsTo(models.User, {
-      foreignKey: "userId",
-      as: "user",
+      foreignKey: 'user_id',
+      as: 'user'
     });
-
     Booking.belongsTo(models.Event, {
-      foreignKey: "eventId",
-      as: "event",
+      foreignKey: 'event_id',
+      as: 'event'
     });
   };
 

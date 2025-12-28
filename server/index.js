@@ -1,54 +1,57 @@
 const express = require("express");
 const cors = require("cors");
-const dotenv = require("dotenv");
-const sequelize = require("./config/db");
-const errorHandler = require("./middlewares/errorHandler");
+const helmet = require("helmet");
+const morgan = require("morgan");
+require("dotenv").config();
+const db = require("./models");
+const routes = require("./routes");
+const errorHandler = require("./middlewares/errorMiddleware");
 
 const app = express();
-dotenv.config();
-const port = process.env.PORT;
+const { sequelize } = db;
 
+app.use(helmet());
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
 
-app.use('/api', require('./routers/'))
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
 
 app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+  res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// Global error handler
+app.use("/api", routes);
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
 app.use(errorHandler);
 
 const startServer = async () => {
   try {
-    console.log("\n Starting Event Booking System V1...\n");
     await sequelize.authenticate();
-    console.log("Database connection established");
+    console.log("connected!!")
+    await sequelize.sync({ alter: process.env.NODE_ENV === "development" });
 
-    await sequelize.sync({ alter: false });
-    console.log("Database models synchronized");
-    // ============== Start HTTP Server ==============
-    app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
-    });
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {});
   } catch (error) {
-    console.error("Failed to start server:", error);
     process.exit(1);
   }
 };
 
 const gracefulShutdown = async (signal) => {
-  console.log(`\n ${signal} signal received: shutting down gracefully...`);
-
   try {
-    // Close database connection
     await sequelize.close();
-    console.log("Database connection closed!");
     process.exit(0);
   } catch (error) {
-    console.error("Error during shutdown:", error);
     process.exit(1);
   }
 };
@@ -56,15 +59,13 @@ const gracefulShutdown = async (signal) => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-// Handle uncaught errors
 process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
   gracefulShutdown("UNCAUGHT_EXCEPTION");
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
   gracefulShutdown("UNHANDLED_REJECTION");
 });
 
 startServer();
+module.exports = app;

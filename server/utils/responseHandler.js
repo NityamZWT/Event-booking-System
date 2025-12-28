@@ -1,62 +1,55 @@
-class ResponseHandler {
-  constructor(statusCode, message, success, data = undefined) {
+const { ResponseType } = require('../types/common.types');
+
+class ApiResponse {
+  constructor(statusCode, message, success, type, data = null, meta = null) {
     this.statusCode = statusCode;
     this.message = message;
     this.success = success;
+    this.type = type;
     this.data = data;
+    this.meta = meta;
   }
 
   send(res) {
     const response = {
       success: this.success,
-      message: this.message,
-      data: this.data,
+      type: this.type,
+      message: this.message
     };
+
+    if (this.data !== null && this.data !== undefined) {
+      response.data = this.data;
+    }
+
+    if (this.meta !== null && this.meta !== undefined) {
+      response.meta = this.meta;
+    }
+
     return res.status(this.statusCode).json(response);
   }
 }
 
-class SuccessResponse extends ResponseHandler {
-  constructor(message, data = undefined) {
-    super(200, message, true, data);
+class SuccessResponse extends ApiResponse {
+  constructor(message, data = null, meta = null) {
+    super(200, message, true, ResponseType.SUCCESS, data, meta);
   }
 }
 
-class ErrorResponse extends ResponseHandler {
-  constructor(statusCode, message) {
-    super(statusCode, message, false);
+class CreatedResponse extends ApiResponse {
+  constructor(message, data = null) {
+    super(201, message, true, ResponseType.CREATED, data);
   }
 }
 
-class CreateResponse extends ResponseHandler {
-  constructor(message, data = undefined) {
-    super(201, message, true, data);
-  }
-}
-
-class UnAuthorizedResponse extends ResponseHandler {
-  constructor(
-    message = "user not authorise. Please login with correct",
-    data = undefined
-  ) {
-    super(401, message, true);
-  }
-}
-
-class AccessDeniedResponse extends ResponseHandler {
-  constructor(
-    message = "User is no authorise for demanded rsource",
-    data = undefined
-  ) {
-    super(403, message, true);
+class NoContentResponse extends ApiResponse {
+  constructor(message = 'Success') {
+    super(204, message, true, ResponseType.NO_CONTENT);
   }
 }
 
 module.exports = {
-  ResponseHandler,
-  AccessDeniedResponse,
-  UnAuthorizedResponse,
-  CreateResponse,
-  ErrorResponse,
+  ApiResponse,
   SuccessResponse,
+  CreatedResponse,
+  NoContentResponse
 };

@@ -1,66 +1,77 @@
 const bcrypt = require('bcrypt');
-require('dotenv').config();
-const saltRounds = Number(process.env.SALT_ROUNDS);
+const { UserRole } = require('../types/common.types');
 
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define(
-    "User",
+    'User',
     {
       id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        autoIncrement: true,
+        autoIncrement: true
       },
       first_name: {
-        type: DataTypes.STRING,
-        allowNull: false,
+        type: DataTypes.STRING(50),
+        allowNull: false
       },
       last_name: {
-        type: DataTypes.STRING,
-        allowNull: false,
+        type: DataTypes.STRING(50),
+        allowNull: false
       },
       email: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(100),
         allowNull: false,
         unique: true,
         validate: {
           isEmail: {
-            msg: "Must be a valid email address",
-          },
-        },
+            msg: 'Must be a valid email address'
+          }
+        }
       },
       password: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        set(value) {
-          if (value) {
-            this.setDataValue("password", bcrypt.hashSync(value, saltRounds));
-          }
-        },
+        type: DataTypes.STRING(255),
+        allowNull: false
       },
       role: {
-        type: DataTypes.ENUM("admin", "event_manager", "customer"),
-        defaultValue: "customer",
-      },
+        type: DataTypes.ENUM('ADMIN', 'EVENT_MANAGER', 'CUSTOMER'),
+        allowNull: false,
+        defaultValue: UserRole.CUSTOMER
+      }
     },
     {
-      tableName: "users",
+      tableName: 'users',
       timestamps: true,
+      underscored: true,
+      paranoid: true,
+      hooks: {
+        beforeCreate: async (user) => {
+          if (user.password) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(user.password, salt);
+          }
+        },
+        beforeUpdate: async (user) => {
+          if (user.changed('password')) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(user.password, salt);
+          }
+        }
+      }
     }
   );
 
-  /* ================= ASSOCIATIONS ================= */
+  User.prototype.comparePassword = async function (candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
+  };
+
   User.associate = (models) => {
     User.hasMany(models.Event, {
-      foreignKey: "userId",
-      as: "events",
-      onDelete: "CASCADE",
+      foreignKey: 'created_by',
+      as: 'events'
     });
-
     User.hasMany(models.Booking, {
-      foreignKey: "userId",
-      as: "bookings",
-      onDelete: "CASCADE",
+      foreignKey: 'user_id',
+      as: 'bookings'
     });
   };
 

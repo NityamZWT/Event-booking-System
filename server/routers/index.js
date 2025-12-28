@@ -1,8 +1,14 @@
-const express = require('express')
-const router = express.Router()
+const express = require('express');
+const authRoutes = require('./authRoutes');
+const eventRoutes = require('./eventRoutes');
+const bookingRoutes = require('./bookingRoutes');
+const analyticsRoutes = require('./analyticsRoutes');
 
-//Import Routes
-router.use('/auth', require('./auth.routes'))
-router.use('/event', require('./event.routes'))
+const router = express.Router();
 
-module.exports = router
+router.use('/auth', authRoutes);
+router.use('/events', eventRoutes);
+router.use('/bookings', bookingRoutes);
+router.use('/analytics', analyticsRoutes);
+
+module.exports = router;

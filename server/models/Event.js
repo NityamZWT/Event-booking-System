@@ -1,54 +1,71 @@
 module.exports = (sequelize, DataTypes) => {
   const Event = sequelize.define(
-    "Event",
+    'Event',
     {
       id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        autoIncrement: true,
+        autoIncrement: true
       },
-      event_name: {
-        type: DataTypes.STRING,
-        allowNull: false,
+      title: {
+        type: DataTypes.STRING(200),
+        allowNull: false
       },
-      event_date: {
+      date: {
         type: DataTypes.DATE,
-        allowNull: false,
+        allowNull: false
       },
-      event_location: {
-        type: DataTypes.STRING,
-        allowNull: false,
+      location: {
+        type: DataTypes.STRING(255),
+        allowNull: false
       },
       ticket_price: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
+        validate: {
+          min: 0
+        }
       },
       capacity: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        validate: {
+          min: 1
+        }
       },
-      userId: {
+      created_by: {
         type: DataTypes.INTEGER,
         allowNull: false,
-      },
+        references: {
+          model: 'users',
+          key: 'id'
+        }
+      }
     },
     {
-      tableName: "events",
+      tableName: 'events',
       timestamps: true,
+      underscored: true,
+      paranoid: true,
+      indexes: [
+        {
+          fields: ['created_by']
+        },
+        {
+          fields: ['date']
+        }
+      ]
     }
   );
 
-  /* ================= ASSOCIATIONS ================= */
   Event.associate = (models) => {
     Event.belongsTo(models.User, {
-      foreignKey: "userId",
-      as: "creator",
+      foreignKey: 'created_by',
+      as: 'creator'
     });
-
     Event.hasMany(models.Booking, {
-      foreignKey: "eventId",
-      as: "bookings",
-      onDelete: "CASCADE",
+      foreignKey: 'event_id',
+      as: 'bookings'
     });
   };
 
