@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
@@ -19,14 +18,19 @@ const bookingSchema = Yup.object({
 export const BookEventPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data, isLoading, error } = useEvent(id);
+  const { data, isLoading, error } = useEvent(id ? parseInt(id) : null);
   const createBooking = useCreateBooking();
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async (values: any) => {
+    const event = data?.data;
+    const bookingAmount = Number(event.ticket_price) * values.quantity;
+
     try {
       await createBooking.mutateAsync({
-        event_id: parseInt(id),
-        ...values,
+        event_id: parseInt(id!),
+        attendee_name: values.attendee_name,
+        quantity: values.quantity,
+        booking_amount: bookingAmount,
       });
       navigate('/bookings');
     } catch (error) {
@@ -35,7 +39,7 @@ export const BookEventPage = () => {
   };
 
   if (isLoading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
+  if (error) return <div>Error loading event</div>;
 
   const event = data?.data;
 
@@ -46,9 +50,9 @@ export const BookEventPage = () => {
           <CardTitle>Book Event</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+          <div className="mb-6 p-4 bg-muted rounded-lg">
             <h3 className="font-semibold text-lg mb-2">{event.title}</h3>
-            <div className="space-y-1 text-sm text-slate-600">
+            <div className="space-y-1 text-sm text-muted-foreground">
               <p>Date: {formatDate(event.date)}</p>
               <p>Location: {event.location}</p>
               <p>Price per ticket: {formatCurrency(event.ticket_price)}</p>
@@ -66,13 +70,11 @@ export const BookEventPage = () => {
           >
             {({ errors, touched, values }) => (
               <Form className="space-y-4">
-                {createBooking.error && <ErrorMessage error={createBooking.error} />}
-                
                 <div>
                   <Label htmlFor="attendee_name">Attendee Name</Label>
                   <Field name="attendee_name" as={Input} />
                   {errors.attendee_name && touched.attendee_name && (
-                    <p className="text-sm text-red-500 mt-1">{errors.attendee_name}</p>
+                    <p className="text-sm text-destructive mt-1">{errors.attendee_name}</p>
                   )}
                 </div>
 
@@ -80,11 +82,11 @@ export const BookEventPage = () => {
                   <Label htmlFor="quantity">Quantity</Label>
                   <Field name="quantity" type="number" min="1" as={Input} />
                   {errors.quantity && touched.quantity && (
-                    <p className="text-sm text-red-500 mt-1">{errors.quantity}</p>
+                    <p className="text-sm text-destructive mt-1">{errors.quantity}</p>
                   )}
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-lg">
+                <div className="p-4 bg-muted rounded-lg">
                   <p className="font-semibold">
                     Total Amount: {formatCurrency(event.ticket_price * values.quantity)}
                   </p>

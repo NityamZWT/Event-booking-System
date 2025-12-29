@@ -1,14 +1,13 @@
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
 export const AnalyticsPage = () => {
   const { data, isLoading, error } = useAnalytics();
 
   if (isLoading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
+  if (error) return <div>Error loading analytics</div>;
 
   const analytics = data?.data;
   const summary = analytics?.summary || {};
@@ -53,7 +52,7 @@ export const AnalyticsPage = () => {
         </CardHeader>
         <CardContent>
           {revenueByEvent.length === 0 ? (
-            <p className="text-center text-slate-500 py-4">No data available</p>
+            <p className="text-center text-muted-foreground py-4">No data available</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
