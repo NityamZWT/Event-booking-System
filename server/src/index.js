@@ -4,7 +4,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 require("dotenv").config();
 const db = require("./models");
-const routes = require("./routes");
+const routes = require("./routers");
 const errorHandler = require("./middlewares/errorMiddleware");
 
 const app = express();

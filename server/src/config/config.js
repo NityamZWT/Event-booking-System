@@ -7,7 +7,7 @@ module.exports = {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 3306,
-    dialect: 'mysql',
+    dialect: process.env.DB_DIALECT,
     logging: false,
     pool: {
       max: 5,
@@ -22,7 +22,7 @@ module.exports = {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 3306,
-    dialect: 'mysql',
+    dialect: process.env.DB_DIALECT,
     logging: false,
     pool: {
       max: 10,
