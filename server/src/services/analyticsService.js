@@ -1,5 +1,5 @@
 const db = require("../models");
-const { UserRole } = require("../types/common.types");
+const { UserRole } = require("../constants/common.types");
 
 const { Event, Booking, sequelize } = db;
 

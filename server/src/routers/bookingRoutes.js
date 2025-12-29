@@ -1,7 +1,7 @@
 const express = require("express");
 const bookingController = require("../controllers/bookingController");
 const { authenticate, authorize } = require("../middlewares/authMiddleware");
-const { UserRole } = require("../types/common.types");
+const { UserRole } = require("../constants/common.types");
 
 const router = express.Router();
 

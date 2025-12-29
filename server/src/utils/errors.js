@@ -1,4 +1,4 @@
-const { ErrorType } = require('../types/common.types');
+const { ErrorType } = require('../constants/common.types');
 
 class AppError extends Error {
   constructor(message, statusCode, type) {

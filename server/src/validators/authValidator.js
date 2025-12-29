@@ -1,5 +1,5 @@
 const yup = require('yup');
-const { UserRole } = require('../types/common.types');
+const { UserRole } = require('../constants/common.types');
 
 const registerSchema = yup.object({
   first_name: yup

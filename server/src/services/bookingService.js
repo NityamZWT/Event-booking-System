@@ -5,7 +5,7 @@ const {
   AuthorizationError,
 } = require("../utils/errors");
 const { Transaction } = require("sequelize");
-const { UserRole } = require("../types/common.types");
+const { UserRole } = require("../constants/common.types");
 
 const { Booking, Event, User, sequelize } = db;
 

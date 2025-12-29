@@ -1,5 +1,8 @@
 const bcrypt = require('bcrypt');
-const { UserRole } = require('../types/common.types');
+const { UserRole } = require('../constants/common.types');
+require('dotenv').config()
+
+const saltRounds = process.env.SALT_ROUNDS
 
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define(
@@ -46,7 +49,7 @@ module.exports = (sequelize, DataTypes) => {
       hooks: {
         beforeCreate: async (user) => {
           if (user.password) {
-            const salt = await bcrypt.genSalt(process.env.SALT_ROUNDS);
+            const salt = await bcrypt.genSalt(saltRounds);
             user.password = await bcrypt.hash(user.password, salt);
           }
         },

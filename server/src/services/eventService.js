@@ -1,7 +1,7 @@
 const db = require("../models");
 const { Op } = require("sequelize");
 const { NotFoundError, AuthorizationError } = require("../utils/errors");
-const { UserRole } = require("../types/common.types");
+const { UserRole } = require("../constants/common.types");
 
 const { Event, User, Booking, sequelize } = db;
 

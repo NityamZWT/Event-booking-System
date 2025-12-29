@@ -1,4 +1,4 @@
-const { ResponseType } = require('../types/common.types');
+const { ResponseType } = require('../constants/common.types');
 
 class ApiResponse {
   constructor(statusCode, message, success, type, data = null, meta = null) {
