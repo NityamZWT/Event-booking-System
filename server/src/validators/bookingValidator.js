@@ -18,6 +18,11 @@ const createBookingSchema = yup.object({
     .integer('Quantity must be an integer')
     .min(1, 'Quantity must be at least 1')
     .default(1)
+  ,
+  booking_amount: yup
+    .number()
+    .min(0, 'Booking amount must be greater than or equal to 0')
+    .required('Booking amount is required')
 });
 
 module.exports = {

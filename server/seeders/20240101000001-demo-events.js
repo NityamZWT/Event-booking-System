@@ -14,7 +14,8 @@ module.exports = {
     await queryInterface.bulkInsert('events', [
       {
         title: 'Tech Conference 2025',
-        date: new Date('2025-06-15'),
+        description: 'This is Tech Conference 2025',
+        date: new Date('2026-06-15'),
         location: 'San Francisco, CA',
         ticket_price: 299.99,
         capacity: 500,
@@ -24,6 +25,7 @@ module.exports = {
       },
       {
         title: 'Music Festival 2025',
+        description: 'This is Music Festival 2025',
         date: new Date('2025-07-20'),
         location: 'Los Angeles, CA',
         ticket_price: 150.0,

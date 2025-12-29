@@ -44,7 +44,12 @@ const loginSchema = yup.object({
     .email('Invalid email format')
     .lowercase()
     .required('Email is required'),
-  password: yup.string().required('Password is required')
+  password: yup.string().required('Password is required'),
+  role: yup
+    .mixed()
+    .oneOf(Object.values(UserRole), 'Role must be ADMIN, EVENT_MANAGER, or CUSTOMER')
+    .required('User role is required')
+    .default(UserRole.CUSTOMER)
 });
 
 module.exports = {

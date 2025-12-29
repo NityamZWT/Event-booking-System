@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const { UserRole } = require('../constants/common.types');
 require('dotenv').config()
 
-const saltRounds = process.env.SALT_ROUNDS
+const saltRounds = Number(process.env.SALT_ROUNDS)
 
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define(

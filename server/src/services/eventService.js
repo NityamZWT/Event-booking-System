@@ -1,6 +1,6 @@
 const db = require("../models");
 const { Op } = require("sequelize");
-const { NotFoundError, AuthorizationError } = require("../utils/errors");
+const { NotFoundError, AuthorizationError, ValidationError } = require("../utils/errors");
 const { UserRole } = require("../constants/common.types");
 
 const { Event, User, Booking, sequelize } = db;
@@ -16,7 +16,7 @@ class EventService {
         { transaction }
       );
 
-      return await Event.findByPk(event.id, {
+      return await Event.findByPk(event.id, { 
         include: [
           {
             model: User,
@@ -48,6 +48,10 @@ class EventService {
       };
     }
 
+    if (filters.q) {
+      where.title = { [Op.like]: `%${filters.q}%` };
+    }
+
     const { count, rows } = await Event.findAndCountAll({
       where,
       limit,
@@ -62,8 +66,14 @@ class EventService {
       ],
     });
 
+    const events = rows.map((r) => {
+      const e = typeof r.get === 'function' ? r.get({ plain: true }) : r;
+      e.pastEvent = new Date(e.date) < new Date();
+      return e;
+    });
+
     return {
-      events: rows,
+      events,
       pagination: {
         total: count,
         page,
@@ -108,6 +118,14 @@ class EventService {
         throw new AuthorizationError(
           "You can only update events created by you"
         );
+      }
+
+      // If a non-admin is updating the date, ensure it's in the future
+      if (updateData.date && userRole !== UserRole.ADMIN) {
+        const newDate = new Date(updateData.date);
+        if (isNaN(newDate.getTime()) || newDate <= new Date()) {
+          throw new ValidationError('Event date must be in the future', { date: 'Event date must be in the future' });
+        }
       }
 
       await event.update(updateData, { transaction });

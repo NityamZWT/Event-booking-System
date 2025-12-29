@@ -50,6 +50,7 @@ const startServer = async () => {
 const gracefulShutdown = async (signal) => {
   try {
     await sequelize.close();
+    console.log(`${signal}`)
     process.exit(0);
   } catch (error) {
     process.exit(1);
@@ -59,11 +60,11 @@ const gracefulShutdown = async (signal) => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-process.on("uncaughtException", (error) => {
+process.on("uncaughtException", () => {
   gracefulShutdown("UNCAUGHT_EXCEPTION");
 });
 
-process.on("unhandledRejection", (reason, promise) => {
+process.on("unhandledRejection", () => {
   gracefulShutdown("UNHANDLED_REJECTION");
 });
 

@@ -8,6 +8,7 @@ const {
   SuccessResponse,
 } = require("../utils/responseHandler");
 const { ValidationError } = require("../utils/errors");
+const { boolean } = require("yup");
 
 const createEvent = async (req, res, next) => {
   try {
@@ -16,7 +17,7 @@ const createEvent = async (req, res, next) => {
       stripUnknown: true,
     });
 
-    const event = await eventService.createEvent(validatedData, req.user.id);
+    const event = await eventService.createEvent(validatedData, req.user.id); 
 
     return new CreatedResponse("Event created successfully", event).send(res);
   } catch (error) {
@@ -37,11 +38,15 @@ const getEvents = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const own_events = parseInt(req.query.own_events)
+console.log("query---", req.query.own_events);
 
     const filters = {};
-    if (req.user.role === "EVENT_MANAGER") {
+    if (req.user.role === "EVENT_MANAGER" && own_events === 1) {
+      
       filters.created_by = req.user.id;
     }
+    console.log("inside",filters);
 
     if (req.query.date_from) {
       filters.date_from = req.query.date_from;
@@ -50,6 +55,10 @@ const getEvents = async (req, res, next) => {
     if (req.query.date_to) {
       filters.date_to = req.query.date_to;
     }
+    if (req.query.q) {
+      filters.q = req.query.q;
+    }
+console.log(filters,'filter');
 
     const result = await eventService.getEvents(page, limit, filters);
 

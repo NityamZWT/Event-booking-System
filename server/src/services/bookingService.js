@@ -15,7 +15,7 @@ class BookingService {
       {
         isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
       },
-      async (transaction) => {
+      async (transaction) => { 
         const event = await Event.findByPk(bookingData.event_id, {
           lock: transaction.LOCK.UPDATE,
           transaction,
@@ -42,6 +42,13 @@ class BookingService {
 
         const bookingAmount = Number(event.ticket_price) * requestedQuantity;
 
+        // ensure amount is correct
+        const incomingAmount = Number(bookingData.booking_amount || 0);
+        if (Number(incomingAmount.toFixed(2)) !== Number(bookingAmount.toFixed(2))) {
+          throw new ConflictError(
+            `Payment amount mismatch. Expected ${bookingAmount.toFixed(2)} for quantity ${requestedQuantity}`
+          );
+        }
         const booking = await Booking.create(
           {
             user_id: userId,
@@ -72,21 +79,30 @@ class BookingService {
     );
   }
 
-  async getUserBookings(userId, page = 1, limit = 10) {
+  async getUserBookings(userId, userRole, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
 
+    const where = {};
+    const include = [
+      {
+        model: Event,
+        as: "event",
+        attributes: ["id", "title", "date", "location", "ticket_price", "created_by"],
+      },
+    ];
+
+    // Customers only see their own bookings
+    if (userRole !== UserRole.ADMIN) {
+      where.user_id = userId;
+    }
+
+
     const { count, rows } = await Booking.findAndCountAll({
-      where: { user_id: userId },
+      where,
       limit,
       offset,
       order: [["created_at", "DESC"]],
-      include: [
-        {
-          model: Event,
-          as: "event",
-          attributes: ["id", "title", "date", "location", "ticket_price"],
-        },
-      ],
+      include,
     });
 
     return {

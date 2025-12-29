@@ -13,7 +13,7 @@ const createBooking = async (req, res, next) => {
       stripUnknown: true,
     });
 
-    const booking = await bookingService.createBooking(
+    const booking = await bookingService.createBooking( 
       validatedData,
       req.user.id
     );
@@ -42,6 +42,7 @@ const getUserBookings = async (req, res, next) => {
 
     const result = await bookingService.getUserBookings(
       req.user.id,
+      req.user.role,
       page,
       limit
     );

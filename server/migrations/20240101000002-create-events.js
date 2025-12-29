@@ -12,6 +12,10 @@ module.exports = {
         type: Sequelize.STRING(200),
         allowNull: false,
       },
+      description: {
+        type: DataTypes.STRING(1000),
+        allowNull: true
+      },
       date: {
         type: Sequelize.DATE,
         allowNull: false,
