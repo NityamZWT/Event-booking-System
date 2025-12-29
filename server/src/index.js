@@ -11,7 +11,21 @@ const app = express();
 const { sequelize } = db;
 
 app.use(helmet());
-app.use(cors());
+const allowedOrigins = ["http://localhost:5173"];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -37,7 +51,7 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await sequelize.authenticate();
-    console.log("connected!!")
+    console.log("connected!!");
     await sequelize.sync({ alter: process.env.NODE_ENV === "development" });
 
     const PORT = process.env.PORT || 5000;
@@ -50,7 +64,7 @@ const startServer = async () => {
 const gracefulShutdown = async (signal) => {
   try {
     await sequelize.close();
-    console.log(`${signal}`)
+    console.log(`${signal}`);
     process.exit(0);
   } catch (error) {
     process.exit(1);

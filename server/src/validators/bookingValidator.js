@@ -25,6 +25,23 @@ const createBookingSchema = yup.object({
     .required('Booking amount is required')
 });
 
+const getUserBookingsSchema = yup.object({
+  page: yup
+    .number()
+    .integer()
+    .min(1)
+    .default(1)
+    .transform((value, originalValue) => (originalValue === undefined ? undefined : Number(originalValue))),
+  limit: yup
+    .number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(10)
+    .transform((value, originalValue) => (originalValue === undefined ? undefined : Number(originalValue))),
+});
+
 module.exports = {
-  createBookingSchema
+  createBookingSchema,
+  getUserBookingsSchema,
 };

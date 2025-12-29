@@ -57,7 +57,45 @@ const updateEventSchema = yup.object({
     .min(1, 'Capacity must be at least 1')
 });
 
+
+
+const getEventsSchema = yup
+  .object({
+    page: yup
+      .number()
+      .integer()
+      .min(1)
+      .default(1)
+      .transform((value, originalValue) => (originalValue === undefined ? undefined : Number(originalValue))),
+    limit: yup
+      .number()
+      .integer()
+      .min(1)
+      .max(100)
+      .default(10)
+      .transform((value, originalValue) => (originalValue === undefined ? undefined : Number(originalValue))),
+    own_events: yup
+      .number()
+      .oneOf([0, 1])
+      .transform((value, originalValue) => (originalValue === undefined ? undefined : Number(originalValue))),
+    date_from: yup
+      .date()
+      .transform((value, originalValue) => (originalValue ? new Date(originalValue) : undefined)),
+    date_to: yup
+      .date()
+      .transform((value, originalValue) => (originalValue ? new Date(originalValue) : undefined)),
+    q: yup.string().trim().max(255),
+  })
+  .test('date-range', 'date_to must be greater than or equal to date_from', (value) => {
+    if (!value) return true;
+    if (value.date_from && value.date_to) {
+      return value.date_to >= value.date_from;
+    }
+    return true;
+  });
+
 module.exports = {
   createEventSchema,
-  updateEventSchema
+  updateEventSchema,
+  getEventsSchema,
 };

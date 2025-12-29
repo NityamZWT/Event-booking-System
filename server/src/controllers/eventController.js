@@ -2,13 +2,13 @@ const eventService = require("../services/eventService");
 const {
   createEventSchema,
   updateEventSchema,
+  getEventsSchema,
 } = require("../validators/eventValidator");
 const {
   CreatedResponse,
   SuccessResponse,
 } = require("../utils/responseHandler");
 const { ValidationError } = require("../utils/errors");
-const { boolean } = require("yup");
 
 const createEvent = async (req, res, next) => {
   try {
@@ -36,29 +36,30 @@ const createEvent = async (req, res, next) => {
 
 const getEvents = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const own_events = parseInt(req.query.own_events)
-console.log("query---", req.query.own_events);
+    const validatedQuery = await getEventsSchema.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const page = validatedQuery.page || 1;
+    const limit = validatedQuery.limit || 10;
+    const own_events = validatedQuery.own_events;
 
     const filters = {};
     if (req.user.role === "EVENT_MANAGER" && own_events === 1) {
-      
       filters.created_by = req.user.id;
     }
-    console.log("inside",filters);
 
-    if (req.query.date_from) {
-      filters.date_from = req.query.date_from;
+    if (validatedQuery.date_from) {
+      filters.date_from = validatedQuery.date_from;
     }
 
-    if (req.query.date_to) {
-      filters.date_to = req.query.date_to;
+    if (validatedQuery.date_to) {
+      filters.date_to = validatedQuery.date_to;
     }
-    if (req.query.q) {
-      filters.q = req.query.q;
+    if (validatedQuery.q) {
+      filters.q = validatedQuery.q;
     }
-console.log(filters,'filter');
 
     const result = await eventService.getEvents(page, limit, filters);
 

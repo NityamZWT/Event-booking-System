@@ -1,5 +1,5 @@
 const bookingService = require("../services/bookingService");
-const { createBookingSchema } = require("../validators/bookingValidator");
+const { createBookingSchema, getUserBookingsSchema } = require("../validators/bookingValidator");
 const {
   CreatedResponse,
   SuccessResponse,
@@ -37,8 +37,13 @@ const createBooking = async (req, res, next) => {
 
 const getUserBookings = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const validatedQuery = await getUserBookingsSchema.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const page = validatedQuery.page || 1;
+    const limit = validatedQuery.limit || 10;
 
     const result = await bookingService.getUserBookings(
       req.user.id,
