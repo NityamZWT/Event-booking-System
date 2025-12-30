@@ -1,12 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'react-toastify';
-import { eventsAPI } from '@/api/events';
-import { QUERY_KEYS } from '@/lib/constants';
-import { CreateEventData } from '@/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+import { eventsAPI } from "@/api/events";
+import { QUERY_KEYS } from "@/lib/constants";
 
 interface UseEventsParams {
   page?: number;
   limit?: number;
+  created_by?: number;
   own_events?: number;
   date_from?: string;
   date_to?: string;
@@ -37,7 +37,7 @@ export const useCreateEvent = () => {
     mutationFn: eventsAPI.createEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EVENTS] });
-      toast.success('Event created successfully');
+      toast.success("Event created successfully");
     },
   });
 };
@@ -49,8 +49,10 @@ export const useUpdateEvent = () => {
     mutationFn: eventsAPI.updateEvent,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EVENTS] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EVENT, variables.id] });
-      toast.success('Event updated successfully');
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.EVENT, variables.id],
+      });
+      toast.success("Event updated successfully");
     },
   });
 };
@@ -62,7 +64,7 @@ export const useDeleteEvent = () => {
     mutationFn: eventsAPI.deleteEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EVENTS] });
-      toast.success('Event deleted successfully');
+      toast.success("Event deleted successfully");
     },
   });
 };

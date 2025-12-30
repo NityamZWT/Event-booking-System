@@ -73,7 +73,7 @@ const getEvents = async (req, res, next) => {
 
 const getEventById = async (req, res, next) => {
   try {
-    const event = await eventService.getEventById(parseInt(req.params.id));
+    const event = await eventService.getEventById(parseInt(req.params.id), req.user.role);
 
     return new SuccessResponse("Event retrieved successfully", event).send(res);
   } catch (error) {

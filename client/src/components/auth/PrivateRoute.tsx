@@ -1,6 +1,6 @@
-import { Navigate } from 'react-router-dom';
-import { useAppSelector } from '@/store/hooks';
-import { UserRole } from '@/types';
+import { Navigate } from "react-router-dom";
+import { useAppSelector } from "@/store/hook";
+import { UserRole } from "@/types";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export const PrivateRoute = ({ children, allowedRoles }: PrivateRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && !allowedRoles.includes(user.role as UserRole)) {
     return <Navigate to="/events" replace />;
   }
 

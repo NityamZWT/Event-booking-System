@@ -48,7 +48,6 @@ const loginSchema = yup.object({
   role: yup
     .mixed()
     .oneOf(Object.values(UserRole), 'Role must be ADMIN, EVENT_MANAGER, or CUSTOMER')
-    .required('User role is required')
     .default(UserRole.CUSTOMER)
 });
 

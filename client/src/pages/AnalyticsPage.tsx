@@ -1,18 +1,23 @@
-import { useAnalytics } from '@/hooks/useAnalytics';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { formatDate, formatCurrency } from "@/lib/utils";
+import { RevenueByEvent, Summary } from "@/types";
 
 export const AnalyticsPage = () => {
   const { data, isLoading, error } = useAnalytics();
 
   if (isLoading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
+  if (error) return <div>Error loading analytics</div>;
 
   const analytics = data?.data;
-  const summary = analytics?.summary || {};
-  const revenueByEvent = analytics?.revenue_by_event || [];
+  const summary: Summary = analytics?.summary ? {
+    ...analytics.summary,
+    total_revenue: typeof analytics.summary.total_revenue === 'string' 
+      ? parseFloat(analytics.summary.total_revenue) 
+      : analytics.summary.total_revenue
+  } : {};
+  const revenueByEvent: RevenueByEvent[] = analytics?.revenue_by_event || [];
 
   return (
     <div className="space-y-6">
@@ -42,7 +47,9 @@ export const AnalyticsPage = () => {
             <CardTitle className="text-lg">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{formatCurrency(summary.total_revenue || 0)}</p>
+            <p className="text-3xl font-bold">
+              {formatCurrency(summary.total_revenue || 0)}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -53,7 +60,9 @@ export const AnalyticsPage = () => {
         </CardHeader>
         <CardContent>
           {revenueByEvent.length === 0 ? (
-            <p className="text-center text-slate-500 py-4">No data available</p>
+            <p className="text-center text-muted-foreground py-4">
+              No data available
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -72,11 +81,17 @@ export const AnalyticsPage = () => {
                   {revenueByEvent.map((event) => (
                     <tr key={event.event_id} className="border-b">
                       <td className="py-2">{event.event_title}</td>
-                      <td className="py-2 text-sm">{formatDate(event.event_date)}</td>
+                      <td className="py-2 text-sm">
+                        {formatDate(event.event_date)}
+                      </td>
                       <td className="py-2 text-sm">{event.location}</td>
-                      <td className="py-2 text-right">{event.total_tickets_sold}</td>
+                      <td className="py-2 text-right">
+                        {event.total_tickets_sold}
+                      </td>
                       <td className="py-2 text-right">{event.capacity}</td>
-                      <td className="py-2 text-right">{event.capacity_utilization}%</td>
+                      <td className="py-2 text-right">
+                        {event.capacity_utilization}%
+                      </td>
                       <td className="py-2 text-right font-semibold">
                         {formatCurrency(event.revenue)}
                       </td>

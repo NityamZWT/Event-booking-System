@@ -1,22 +1,16 @@
-import { Link, Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { Formik, Form, Field } from 'formik';
-import * as Yup from 'yup';
-import { useAuth } from '../hooks/useAuth';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { ErrorMessage } from '../components/common/ErrorMessage';
-
-const loginSchema = Yup.object({
-  email: Yup.string().email('Invalid email').required('Email is required'),
-  password: Yup.string().required('Password is required'),
-});
+import { Link, Navigate, useLocation } from "react-router-dom";
+import { useAppSelector } from "@/store/hook";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import AuthForm from "@/components/auth/AuthForm";
+import { UserRole } from "@/types";
+import { loginSchema } from "@/validators/AuthValidators";
 
 export const LoginPage = () => {
-  const { isAuthenticated } = useSelector((state: any) => state.auth);
-  const { login, isLoginLoading, loginError } = useAuth();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { login, isLoginLoading } = useAuth();
+  const location = useLocation();
+  const roleFromState = (location.state as { role?: UserRole })?.role;
 
   if (isAuthenticated) {
     return <Navigate to="/events" replace />;
@@ -29,44 +23,25 @@ export const LoginPage = () => {
           <CardTitle>Login</CardTitle>
         </CardHeader>
         <CardContent>
-          <Formik
-            initialValues={{ email: '', password: '' }}
+          <AuthForm
+            mode="login"
+            initialValues={{
+              email: "",
+              password: "",
+              role: roleFromState || UserRole.CUSTOMER,
+            }}
             validationSchema={loginSchema}
-            onSubmit={(values: any) => login(values)}
-          >
-            {({ errors, touched }) => (
-              <Form className="space-y-4">
-                {loginError && <ErrorMessage error={loginError} />}
-                
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Field name="email" type="email" as={Input} />
-                  {errors.email && touched.email && (
-                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Field name="password" type="password" as={Input} />
-                  {errors.password && touched.password && (
-                    <p className="text-sm text-red-500 mt-1">{errors.password}</p>
-                  )}
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoginLoading}>
-                  {isLoginLoading ? 'Logging in...' : 'Login'}
-                </Button>
-
-                <p className="text-sm text-center text-slate-600">
-                  Don't have an account?{' '}
-                  <Link to="/register" className="text-slate-900 hover:underline">
-                    Register
-                  </Link>
-                </p>
-              </Form>
-            )}
-          </Formik>
+            onSubmit={(values) => login(values)}
+            submitLabel={isLoginLoading ? "Logging in..." : "Login"}
+            isLoading={isLoginLoading}
+            hideRole={true}
+          />
+          <p className="text-sm text-center text-muted-foreground mt-3">
+            Already have an account?{" "}
+            <Link to="/register" className="text-primary hover:underline">
+              Register
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>

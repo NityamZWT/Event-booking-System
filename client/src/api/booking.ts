@@ -1,5 +1,10 @@
-import axios from '@/lib/axios';
-import { Booking, CreateBookingData, ApiResponse, PaginatedResponse } from '@/types';
+import axios from "@/lib/axios";
+import {
+  Booking,
+  CreateBookingData,
+  ApiResponse,
+  PaginatedResponse,
+} from "@/types";
 
 interface GetBookingsParams {
   page?: number;
@@ -8,12 +13,15 @@ interface GetBookingsParams {
 
 export const bookingsAPI = {
   createBooking: async (data: CreateBookingData) => {
-    const response = await axios.post<ApiResponse<Booking>>('/bookings', data);
+    const response = await axios.post<ApiResponse<Booking>>("/bookings", data);
     return response.data;
   },
 
   getUserBookings: async (params: GetBookingsParams = {}) => {
-    const response = await axios.get<ApiResponse<PaginatedResponse<Booking>>>('/bookings', { params });
+    const response = await axios.get<ApiResponse<PaginatedResponse<Booking>>>(
+      "/bookings",
+      { params }
+    );
     return response.data;
   },
 
@@ -23,7 +31,7 @@ export const bookingsAPI = {
   },
 
   cancelBooking: async (id: number) => {
-    const response = await axios.delete<ApiResponse>(`/bookings/${id}`);
+    const response = await axios.delete<ApiResponse<null>>(`/bookings/${id}`);
     return response.data;
   },
 };

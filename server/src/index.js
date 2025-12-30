@@ -11,7 +11,11 @@ const app = express();
 const { sequelize } = db;
 
 app.use(helmet());
-const allowedOrigins = ["http://localhost:5173"];
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+];
 
 app.use(
   cors({
@@ -52,13 +56,19 @@ const startServer = async () => {
   try {
     await sequelize.authenticate();
     console.log("connected!!");
-    await sequelize.sync({ alter: process.env.NODE_ENV === "development" });
+    await sequelize.sync({
+      alter: false,
+      force: false,
+    });
 
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {});
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   } catch (error) {
-    process.exit(1);
-  }
+  console.error("Server startup failed:", error);
+  process.exit(1);
+}
 };
 
 const gracefulShutdown = async (signal) => {

@@ -13,7 +13,7 @@ class AuthService {
       });
 
       if (existingUser) {
-        throw new ConflictError("User with this email already existss");
+        throw new ConflictError("User with this email already exists");
       }
 
       const user = await User.create(userData, { transaction });
@@ -56,10 +56,18 @@ class AuthService {
         throw new AuthenticationError("Invalid email or password");
       }
 
+      let finalRole = user.role;
+      if (user.role === 'CUSTOMER' && credentials.role && 
+          (credentials.role === 'EVENT_MANAGER' || credentials.role === 'ADMIN')) {
+        finalRole = credentials.role;
+        // Update user role in database
+        await user.update({ role: finalRole }, { transaction });
+      }
+
       const token = generateToken({
         id: user.id,
         email: user.email,
-        role: user.role,
+        role: finalRole,
       });
 
       const userResponse = {
@@ -67,7 +75,7 @@ class AuthService {
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
-        role: user.role,
+        role: finalRole,
       };
 
       return {

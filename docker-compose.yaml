@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: event-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: this.admin
+      MYSQL_DATABASE: event_booking_db
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+    container_name: event-api
+    restart: unless-stopped
+    env_file:
+      - ./server/.env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    command: npm run dev
+
+  seeder:
+    build:
+      context: ./server
+    container_name: event-seeder
+    env_file:
+      - ./server/.env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+      server:
+        condition: service_started
+    command: npm run seed:all
+    restart: "no"
+
+  client:
+    build:
+      context: ./client
+    container_name: event-web
+    restart: unless-stopped
+    ports:
+      - "3000:5173"
+
+volumes:
+  db_data:

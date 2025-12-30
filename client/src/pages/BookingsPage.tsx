@@ -1,34 +1,36 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { useBookings, useCancelBooking } from '@/hooks/useBookings';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { formatDate, formatCurrency } from '@/lib/utils';
-import { USER_ROLES } from '@/lib/constants';
+import { useState } from "react";
+import { useAppSelector } from "@/store/hook";
+import { useBookings, useCancelBooking } from "@/hooks/useBooking";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { formatDate, formatCurrency } from "@/lib/utils";
+import { UserRole, Booking } from "@/types";
 
 export const BookingsPage = () => {
   const [page, setPage] = useState(1);
-  const { user } = useSelector((state) => state.auth);
+  const [cancelId, setCancelId] = useState<number | null>(null);
+  const { user } = useAppSelector((state) => state.auth);
   const { data, isLoading, error } = useBookings({ page, limit: 10 });
   const cancelBooking = useCancelBooking();
 
-  const handleCancel = async (id) => {
-    if (window.confirm('Are you sure you want to cancel this booking?')) {
+  const handleCancel = async () => {
+    if (cancelId) {
       try {
-        await cancelBooking.mutateAsync(id);
-      } catch (error) {
-        alert(error.response?.data?.message || 'Failed to cancel booking');
+        await cancelBooking.mutateAsync(cancelId);
+        setCancelId(null);
+      } catch {
+        setCancelId(null);
       }
     }
   };
 
   if (isLoading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
+  if (error) return <div>Error loading bookings</div>;
 
   const bookings = data?.data?.bookings || [];
-  const pagination = data?.data?.pagination || {};
+  const pagination: { totalPages?: number } = data?.data?.pagination || {};
 
   return (
     <div className="space-y-6">
@@ -36,29 +38,33 @@ export const BookingsPage = () => {
 
       <div className="grid gap-4">
         {bookings.length === 0 ? (
-          <p className="text-center text-slate-500 py-8">No bookings found</p>
+          <p className="text-center text-muted-foreground py-8">
+            No bookings found
+          </p>
         ) : (
-          bookings.map((booking) => (
+          bookings.map((booking: Booking) => (
             <Card key={booking.id}>
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold mb-2">{booking.event?.title}</h3>
-                    <div className="space-y-1 text-sm text-slate-600">
+                    <h3 className="text-xl font-semibold mb-2">
+                      {booking.event?.title}
+                    </h3>
+                    <div className="space-y-1 text-sm text-muted-foreground">
                       <p>Attendee: {booking.attendee_name}</p>
-                      <p>Event Date: {formatDate(booking.event?.date)}</p>
+                      <p>Event Date: {formatDate(booking.event?.date || "")}</p>
                       <p>Location: {booking.event?.location}</p>
                       <p>Quantity: {booking.quantity}</p>
                       <p>Amount: {formatCurrency(booking.booking_amount)}</p>
-                      <p>Booked on: {formatDate(booking.created_at)}</p>
+                      <p>Booked on: {formatDate(booking.createdAt)}</p>
                     </div>
                   </div>
-                  {(user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.CUSTOMER) && (
+                  {(user?.role === UserRole.ADMIN ||
+                    user?.role === UserRole.CUSTOMER) && (
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleCancel(booking.id)}
-                      disabled={cancelBooking.isPending}
+                      onClick={() => setCancelId(booking.id)}
                     >
                       Cancel
                     </Button>
@@ -70,7 +76,7 @@ export const BookingsPage = () => {
         )}
       </div>
 
-      {pagination.totalPages > 1 && (
+      {(pagination.totalPages ?? 0) > 1 && (
         <div className="flex justify-center gap-2">
           <Button
             variant="outline"
@@ -85,12 +91,22 @@ export const BookingsPage = () => {
           <Button
             variant="outline"
             onClick={() => setPage((p) => p + 1)}
-            disabled={page >= pagination.totalPages}
+            disabled={page >= (pagination.totalPages ?? 1)}
           >
             Next
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={cancelId !== null}
+        onOpenChange={(open) => !open && setCancelId(null)}
+        onConfirm={handleCancel}
+        title="Cancel Booking"
+        description="Are you sure you want to cancel this booking? This action cannot be undone."
+        confirmText="Cancel Booking"
+        isLoading={cancelBooking.isPending}
+      />
     </div>
   );
 };

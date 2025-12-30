@@ -1,22 +1,22 @@
-'use strict';
+"use strict";
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     const users = await queryInterface.sequelize.query(
-      'SELECT id FROM users ORDER BY id ASC;',
+      "SELECT id FROM users ORDER BY id ASC;",
       { type: Sequelize.QueryTypes.SELECT }
     );
 
     if (!users || users.length < 2) {
-      throw new Error('Events seeder requires at least 2 users');
+      throw new Error("Events seeder requires at least 2 users");
     }
 
-    await queryInterface.bulkInsert('events', [
+    await queryInterface.bulkInsert("events", [
       {
-        title: 'Tech Conference 2025',
-        description: 'This is Tech Conference 2025',
-        date: new Date('2026-06-15'),
-        location: 'San Francisco, CA',
+        title: "Tech Conference 2025",
+        description: "This is Tech Conference 2025",
+        date: new Date("2026-06-15"),
+        location: "San Francisco, CA",
         ticket_price: 299.99,
         capacity: 500,
         created_by: users[0].id,
@@ -24,12 +24,34 @@ module.exports = {
         updated_at: new Date(),
       },
       {
-        title: 'Music Festival 2025',
-        description: 'This is Music Festival 2025',
-        date: new Date('2025-07-20'),
-        location: 'Los Angeles, CA',
+        title: "Music Festival 2025",
+        description: "This is Music Festival 2025",
+        date: new Date("2025-07-20"),
+        location: "Los Angeles, CA",
         ticket_price: 150.0,
         capacity: 1000,
+        created_by: users[1].id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      {
+        title: "Startup Meetup 2026",
+        description: "Local startup meetup for founders and investors",
+        date: new Date("2026-03-10"),
+        location: "Austin, TX",
+        ticket_price: 49.99,
+        capacity: 200,
+        created_by: users[0].id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      {
+        title: "Art Expo 2026",
+        description: "A showcase of modern art",
+        date: new Date("2026-09-12"),
+        location: "New York, NY",
+        ticket_price: 25.0,
+        capacity: 300,
         created_by: users[1].id,
         created_at: new Date(),
         updated_at: new Date(),
@@ -38,6 +60,6 @@ module.exports = {
   },
 
   down: async (queryInterface) => {
-    await queryInterface.bulkDelete('events', null, {});
+    await queryInterface.bulkDelete("events", null, {});
   },
 };

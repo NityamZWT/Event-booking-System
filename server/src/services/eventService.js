@@ -63,6 +63,12 @@ class EventService {
           as: "creator",
           attributes: ["id", "first_name", "last_name", "email"],
         },
+        {
+          model: Booking,
+          as: "bookings",
+          attributes: ["id", "quantity"],
+          required: false,
+        },
       ],
     });
 
@@ -83,20 +89,36 @@ class EventService {
     };
   }
 
-  async getEventById(eventId) {
+  async getEventById(eventId, userRole) {
+    const includeArray = [
+      {
+        model: User,
+        as: "creator",
+        attributes: ["id", "first_name", "last_name", "email"],
+      },
+    ];
+
+    // Include bookings based on user role
+    if (userRole === "ADMIN") {
+      // ADMIN can see full booking details
+      includeArray.push({
+        model: Booking,
+        as: "bookings",
+        attributes: ["id", "attendee_name", "quantity", "booking_amount", "created_at"],
+      });
+    } else {
+      // Non-ADMIN users only get quantity for capacity calculation
+      // but not individual booking details
+      includeArray.push({
+        model: Booking,
+        as: "bookings",
+        attributes: ["quantity"],
+        required: false,
+      });
+    }
+
     const event = await Event.findByPk(eventId, {
-      include: [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["id", "first_name", "last_name", "email"],
-        },
-        {
-          model: Booking,
-          as: "bookings",
-          attributes: ["id", "attendee_name", "quantity", "booking_amount"],
-        },
-      ],
+      include: includeArray,
     });
 
     if (!event) {
@@ -151,10 +173,19 @@ class EventService {
         throw new NotFoundError("Event not found");
       }
 
-      if (userRole !== UserRole.ADMIN) {
-        throw new AuthorizationError("Only administrators can delete events");
+      // Allow deletion for admins, or event managers who created the event
+      if (userRole === UserRole.ADMIN) {
+        // admin can delete
+      } else if (userRole === UserRole.EVENT_MANAGER) {
+        if (event.created_by !== userId) {
+          throw new AuthorizationError("You can only delete events created by you");
+        }
+      } else {
+        throw new AuthorizationError("Only administrators or the event manager who created the event can delete it");
       }
 
+      // delete related bookings first
+      await Booking.destroy({ where: { event_id: eventId }, transaction });
       await event.destroy({ transaction });
 
       return { message: "Event deleted successfully" };

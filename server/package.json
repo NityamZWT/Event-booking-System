@@ -7,8 +7,9 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "start": "sequelize-cli db:migrate && node src/index.js",
+    "dev": "nodemon src/index.js",
+    "seed:all": "npx sequelize-cli db:seed --seed 20240101000001-demo-users.js && npx sequelize-cli db:seed --seed 20240101000001-demo-events.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

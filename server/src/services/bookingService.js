@@ -15,7 +15,7 @@ class BookingService {
       {
         isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
       },
-      async (transaction) => { 
+      async (transaction) => {
         const event = await Event.findByPk(bookingData.event_id, {
           lock: transaction.LOCK.UPDATE,
           transaction,
@@ -41,12 +41,14 @@ class BookingService {
         }
 
         const bookingAmount = Number(event.ticket_price) * requestedQuantity;
-
-        // ensure amount is correct
         const incomingAmount = Number(bookingData.booking_amount || 0);
-        if (Number(incomingAmount.toFixed(2)) !== Number(bookingAmount.toFixed(2))) {
+        if (
+          Number(incomingAmount.toFixed(2)) !== Number(bookingAmount.toFixed(2))
+        ) {
           throw new ConflictError(
-            `Payment amount mismatch. Expected ${bookingAmount.toFixed(2)} for quantity ${requestedQuantity}`
+            `Payment amount mismatch. Expected ${bookingAmount.toFixed(
+              2
+            )} for quantity ${requestedQuantity}`
           );
         }
         const booking = await Booking.create(
@@ -87,15 +89,29 @@ class BookingService {
       {
         model: Event,
         as: "event",
-        attributes: ["id", "title", "date", "location", "ticket_price", "created_by"],
+        attributes: [
+          "id",
+          "title",
+          "date",
+          "location",
+          "ticket_price",
+          "created_by",
+        ],
       },
     ];
 
-    // Customers only see their own bookings
-    if (userRole !== UserRole.ADMIN) {
+    // Role-based visibility:
+    // - ADMIN: see all bookings
+    // - CUSTOMER: only their own bookings
+    // - EVENT_MANAGER: bookings for events they created
+    if (userRole === UserRole.CUSTOMER) {
       where.user_id = userId;
     }
 
+    if (userRole === UserRole.EVENT_MANAGER) {
+      // limit bookings to events created by this manager
+      include[0].where = { created_by: userId };
+    }
 
     const { count, rows } = await Booking.findAndCountAll({
       where,

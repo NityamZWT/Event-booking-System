@@ -1,9 +1,9 @@
 import axios from '@/lib/axios';
-import { Analytics, ApiResponse } from '@/types';
+import { ApiResponse } from '@/types';
 
 export const analyticsAPI = {
   getAnalytics: async () => {
-    const response = await axios.get<ApiResponse<Analytics>>('/analytics');
+    const response = await axios.get<ApiResponse<any>>('/analytics');
     return response.data;
   },
 };
