@@ -1,9 +1,3 @@
-Below is a **GitHub-ready `README.md`** that clearly explains your **Event Booking System**, Docker setup, **and explicitly mentions user & event creation via seeders** (based on the code you shared).
-
-You can paste this directly into `README.md`.
-
----
-
 # Event Booking System
 
 A full-stack **Event Booking System** built using **React, Node.js, Express, Sequelize, and MySQL**, fully containerized with **Docker Compose** for easy setup and development.
