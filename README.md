@@ -2,6 +2,7 @@
 
 A full-stack **Event Booking System** built using **React, Node.js, Express, Sequelize, and MySQL**, fully containerized with **Docker Compose** for easy setup and development.
 
+---
 
 ## Environment Setup
 
@@ -44,6 +45,20 @@ DB_PASSWORD=this.admin
 
 ---
 
+## Docker Compose Database Configuration (Important)
+
+In the `docker-compose.yml` file, the **MySQL service must define the following environment variables** to initialize the database correctly:
+
+```yaml
+environment:
+  MYSQL_ROOT_PASSWORD: this.admin
+  MYSQL_DATABASE: event_booking_db
+```
+
+These values **must match** the database credentials provided in `server/.env.docker`.
+
+---
+
 ## Running the Application
 
 From the **root directory**, run:
@@ -54,30 +69,11 @@ docker-compose up --build
 
 ---
 
-## What Runs with Docker Compose
-
-This command will start **three containers**:
-
-1. **Database Container**
-
-   * MySQL 8.0
-   * Stores users and events
-
-2. **Backend Server Container**
-
-   * Express + Sequelize
-   * Exposes REST APIs on port **5000**
-
-3. **Web Client Container**
-
-   * React application
-   * Runs on port **3000**
-
----
-
 ## Database Seeders (Important)
 
-When the application starts, **Sequelize seeders automatically run** and populate the database.
+When the application starts, **Sequelize seeders automatically run** and populate the database with initial data.
+
+---
 
 ### Users Seeder
 
@@ -104,17 +100,6 @@ The events seeder creates **sample events**, linked to existing users:
 * Startup Meetup 2026
 * Art Expo 2026
 
-Each event includes:
-
-* Title & description
-* Date & location
-* Ticket price & capacity
-* `created_by` linked to an existing user
-
-> The events seeder **requires users to exist first**, otherwise it throws an error.
-
----
-
 ## Application URLs
 
 * **Frontend:** [http://localhost:3000](http://localhost:3000)
@@ -130,8 +115,9 @@ Stop containers:
 docker-compose down
 ```
 
-Stop and remove volumes:
+Stop containers and remove volumes:
 
 ```bash
 docker-compose down -v
 ```
+
