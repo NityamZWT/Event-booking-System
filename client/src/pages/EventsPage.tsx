@@ -1,36 +1,61 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import React from "react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/store/hook";
 import { useEvents, useDeleteEvent } from "@/hooks/useEvents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import {
+  formatDate,
+  formatCurrency,
+  convertLocalToUTCDateString,
+} from "@/lib/utils";
 import { Event, Pagination, UserRole } from "@/types";
 
 export const EventsPage = () => {
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [eventDateInput, setEventDateInput] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+
   const { user } = useAppSelector((state) => state.auth);
+
   const { data, isLoading, error } = useEvents({
     page,
     limit: 10,
     q,
-    date_from: eventDate,
-    date_to: eventDate,
+    date: selectedDate ? convertLocalToUTCDateString(selectedDate) : undefined,
   });
+
+  const navigate = useNavigate();
   const deleteEvent = useDeleteEvent();
 
   const handleSearch = () => {
     setQ(searchInput);
-    setEventDate(eventDateInput);
+    setPage(1);
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    setPage(1);
+  };
+
+  const clearDateFilter = () => {
+    setSelectedDate(undefined);
     setPage(1);
   };
 
@@ -71,8 +96,10 @@ export const EventsPage = () => {
         )}
       </div>
 
-      <div className="flex gap-4 items-center">
-        <div className="flex-1">
+      {/* Search and Filter Section */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+        {/* Search Input */}
+        <div className="flex-1 min-w-[200px]">
           <Input
             placeholder="Search events by title"
             value={searchInput}
@@ -80,63 +107,115 @@ export const EventsPage = () => {
             onKeyDown={handleKeyDown}
           />
         </div>
-        <div>
-          <Input
-            type="date"
-            placeholder="Event Date"
-            value={eventDateInput}
-            onChange={(e) => setEventDateInput(e.target.value)}
-          />
+
+        {/* Date Picker */}
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-[240px] justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate ? (
+                  format(selectedDate, "PPP") // Formatted local date
+                ) : (
+                  <span>Filter by date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Clear Date Button */}
+          {selectedDate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearDateFilter}
+              className="h-10 px-3"
+            >
+              Clear
+            </Button>
+          )}
         </div>
+
+        {/* Search Button */}
         <div>
           <Button onClick={handleSearch}>Search</Button>
         </div>
       </div>
 
+      {/* Events List */}
       <div className="grid gap-4">
         {events.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            No events found
+            {selectedDate || q
+              ? "No events match your search criteria"
+              : "No events found"}
           </p>
         ) : (
-          events.map((event:Event) => (
-            <Card 
-              key={event.id} 
+          events.map((event: Event) => (
+            <Card
+              key={event.id}
               className="cursor-pointer hover:bg-muted/50 transition-colors"
               onClick={(e) => {
-                if ((e.target as HTMLElement).closest('button, a')) {
+                if ((e.target as HTMLElement).closest("button, a")) {
                   return;
                 }
-                window.location.href = `/events/${event.id}`;
+                navigate(`/events/${event.id}`);
               }}
             >
               <CardContent className="p-6">
                 <div className="flex justify-between items-center">
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold mb-2">
-                      {event.title}
-                    </h3>
+                    <div className="flex gap-1">
+                      <h3 className="text-xl font-semibold mb-2">
+                        {event.title}
+                      </h3>
+                      {event.pastEvent === true ? (
+                        <span className="bg-red-500 text-white rounded-md p-0.5 m-0">
+                          Past Event
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="space-y-1 text-sm text-muted-foreground">
                       <p>Date: {formatDate(event.date)}</p>
                       <p>Location: {event.location}</p>
                       <p>Price: {formatCurrency(event.ticket_price)}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    {!event.pastEvent && (() => {
-                      const bookedTickets = event.bookings?.reduce((sum: number, booking: any) => sum + (booking.quantity || 0), 0) || 0;
-                      const remaining = event.capacity - bookedTickets;
-                      const isFull = remaining <= 0;
-                      return !isFull ? (
-                        <Link to={`/events/${event.id}/book`}>
-                          <Button size="sm">Book</Button>
-                        </Link>
-                      ) : (
-                        <Button size="sm" disabled variant="outline">
-                          Full
-                        </Button>
-                      );
-                    })()}
+                  <div
+                    className="flex gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {!event.pastEvent &&
+                      (() => {
+                        const bookedTickets =
+                          event.bookings?.reduce(
+                            (sum: number, booking: any) =>
+                              sum + (booking.quantity || 0),
+                            0
+                          ) || 0;
+                        const remaining = event.capacity - bookedTickets;
+                        const isFull = remaining <= 0;
+                        return !isFull ? (
+                          <Link to={`/events/${event.id}/book`}>
+                            <Button size="sm">Book</Button>
+                          </Link>
+                        ) : (
+                          <Button size="sm" disabled variant="outline">
+                            Full
+                          </Button>
+                        );
+                      })()}
                     {(user?.role === UserRole.ADMIN ||
                       (user?.role === UserRole.EVENT_MANAGER &&
                         event.created_by === user.id)) && (
@@ -163,6 +242,7 @@ export const EventsPage = () => {
         )}
       </div>
 
+      {/* Pagination */}
       {pagination.totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <Button
@@ -185,6 +265,7 @@ export const EventsPage = () => {
         </div>
       )}
 
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => !open && setDeleteId(null)}

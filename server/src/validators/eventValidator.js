@@ -78,10 +78,7 @@ const getEventsSchema = yup
       .number()
       .oneOf([0, 1])
       .transform((value, originalValue) => (originalValue === undefined ? undefined : Number(originalValue))),
-    date_from: yup
-      .date()
-      .transform((value, originalValue) => (originalValue ? new Date(originalValue) : undefined)),
-    date_to: yup
+    date: yup
       .date()
       .transform((value, originalValue) => (originalValue ? new Date(originalValue) : undefined)),
     q: yup.string().trim().max(255),

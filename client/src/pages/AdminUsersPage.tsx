@@ -14,6 +14,7 @@ export const AdminUsersPage = () => {
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <div>Error loading users</div>;
+  // console.log(role, 'role');
 
   const users = data?.data?.users || [];
   const pagination: Pagination = data?.data?.pagination || { totalPages: 0 };
@@ -21,15 +22,20 @@ export const AdminUsersPage = () => {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Users</h1>
-
       <div className="flex gap-2 items-center">
-        <Select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value={undefined as unknown as string}>All</option>
+        <Select
+          value={role}
+          onChange={(e) => {
+            e.target.value !== ""
+              ? setRole(e.target.value)
+              : setRole(undefined);
+          }}
+        >
+          <option value="">All</option>
           <option value={UserRole.CUSTOMER}>Customer</option>
           <option value={UserRole.EVENT_MANAGER}>Event Manager</option>
           <option value={UserRole.ADMIN}>Admin</option>
         </Select>
-        <Button onClick={() => setPage(1)}>Filter</Button>
       </div>
 
       <Card>
@@ -43,7 +49,7 @@ export const AdminUsersPage = () => {
             </p>
           ) : (
             <div className="space-y-3">
-              {users.map((u:any) => (
+              {users.map((u: any) => (
                 <div
                   key={u.id}
                   className="p-3 border rounded flex justify-between items-center"
@@ -56,15 +62,17 @@ export const AdminUsersPage = () => {
                       {u.email} • {u.role}
                     </p>
                   </div>
-                  <div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => deleteUser.mutate(u.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+                  {u.role !== UserRole.ADMIN && (
+                    <div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteUser.mutate(u.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

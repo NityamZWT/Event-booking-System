@@ -8,5 +8,5 @@ export const eventSchema = Yup.object({
     .required("Date is required"),
   location: Yup.string().min(3).max(255).required("Location is required"),
   ticket_price: Yup.number().min(0).required("Price is required"),
-  capacity: Yup.number().min(1).required("Capacity is required"),
+  capacity: Yup.number().min(1).required("Capacity is required").integer(''),
 });

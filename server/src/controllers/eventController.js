@@ -17,9 +17,59 @@ const createEvent = async (req, res, next) => {
       stripUnknown: true,
     });
 
-    const event = await eventService.createEvent(validatedData, req.user.id); 
+    // Convert date to start of day in UTC before passing to service
+    if (validatedData.date) {
+      const dateStr = validatedData.date;
+      // If it's just YYYY-MM-DD, convert to UTC midnight
+      // if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      //   validatedData.date = new Date(dateStr + "T00:00:00.000Z");
+      // } else {
+        validatedData.date = new Date(dateStr);
+      // }
+    }
+
+    const event = await eventService.createEvent(validatedData, req.user.id);
 
     return new CreatedResponse("Event created successfully", event).send(res);
+  } catch (error) {
+    if (error.name === "ValidationError") {
+      const errors = error.inner.reduce((acc, err) => {
+        if (err.path) {
+          acc[err.path] = err.message;
+        }
+        return acc;
+      }, {});
+      return next(new ValidationError("Validation failed", errors));
+    }
+    next(error);
+  }
+};
+
+const updateEvent = async (req, res, next) => {
+  try {
+    const validatedData = await updateEventSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    // Convert date to start of day in UTC
+    if (validatedData.date) {
+      const dateStr = validatedData.date;
+      // if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      //   validatedData.date = new Date(dateStr + "T00:00:00.000Z");
+      // } else {
+        validatedData.date = new Date(dateStr);
+      // }
+    }
+
+    const event = await eventService.updateEvent(
+      parseInt(req.params.id),
+      validatedData,
+      req.user.id,
+      req.user.role
+    );
+
+    return new SuccessResponse("Event updated successfully", event).send(res);
   } catch (error) {
     if (error.name === "ValidationError") {
       const errors = error.inner.reduce((acc, err) => {
@@ -50,18 +100,20 @@ const getEvents = async (req, res, next) => {
       filters.created_by = req.user.id;
     }
 
-    if (validatedQuery.date_from) {
-      filters.date_from = validatedQuery.date_from;
+    if (validatedQuery.date) {
+      filters.date = validatedQuery.date;
     }
 
-    if (validatedQuery.date_to) {
-      filters.date_to = validatedQuery.date_to;
-    }
     if (validatedQuery.q) {
       filters.q = validatedQuery.q;
     }
 
-    const result = await eventService.getEvents(page, limit, filters);
+    const result = await eventService.getEvents(
+      page,
+      limit,
+      filters,
+      req.user.role
+    );
 
     return new SuccessResponse("Events retrieved successfully", result).send(
       res
@@ -73,39 +125,13 @@ const getEvents = async (req, res, next) => {
 
 const getEventById = async (req, res, next) => {
   try {
-    const event = await eventService.getEventById(parseInt(req.params.id), req.user.role);
-
-    return new SuccessResponse("Event retrieved successfully", event).send(res);
-  } catch (error) {
-    next(error);
-  }
-};
-
-const updateEvent = async (req, res, next) => {
-  try {
-    const validatedData = await updateEventSchema.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
-
-    const event = await eventService.updateEvent(
+    const event = await eventService.getEventById(
       parseInt(req.params.id),
-      validatedData,
-      req.user.id,
       req.user.role
     );
 
-    return new SuccessResponse("Event updated successfully", event).send(res);
+    return new SuccessResponse("Event retrieved successfully", event).send(res);
   } catch (error) {
-    if (error.name === "ValidationError") {
-      const errors = error.inner.reduce((acc, err) => {
-        if (err.path) {
-          acc[err.path] = err.message;
-        }
-        return acc;
-      }, {});
-      return next(new ValidationError("Validation failed", errors));
-    }
     next(error);
   }
 };

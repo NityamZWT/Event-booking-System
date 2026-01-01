@@ -94,7 +94,7 @@ export const ManagerDashboard = () => {
                 <tbody>
                   {events.map((e:any) => {
                     const rv = revenueMap.get(String(e.id)) as RevenueByEvent | undefined;
-                    const ticketsSold = rv?.total_tickets_sold ?? (e.bookings?.length || 0);
+                    const ticketsSold = rv?.total_tickets_sold ?? (e.bookings?.[0]?.quantity || 0);
                     const capacity = rv?.capacity ?? e.capacity ?? 0;
                     const utilization = rv?.capacity_utilization ?? (capacity ? Math.round((ticketsSold / capacity) * 100) : 0);
                     const revenue = rv?.revenue ?? 0;
@@ -118,7 +118,7 @@ export const ManagerDashboard = () => {
                                 <Button size="sm" variant="outline">Edit</Button>
                               </Link>
                             )}
-                            {user?.role === UserRole.ADMIN && (
+                            {e.bookings?.[0]?.quantity > 0 && user?.role === UserRole.ADMIN && (
                               <Button size="sm" variant="destructive" onClick={() => { setSelectedDeleteId(e.id); setDeleteOpen(true); }}>
                                 Delete
                               </Button>

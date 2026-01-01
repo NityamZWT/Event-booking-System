@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { Formik, Form, Field } from "formik";
+import { Formik, Form, Field, FormikHelpers } from "formik";
 import { useEvent } from "@/hooks/useEvents";
 import { useCreateBooking } from "@/hooks/useBooking";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, handleQuantityOnchange } from "@/lib/utils";
 import { Booking } from "@/types";
 import { bookingSchema } from "@/validators/bookingValidators";
+
+
 
 export const BookEventPage = () => {
   const { id } = useParams();
@@ -98,7 +100,7 @@ export const BookEventPage = () => {
             validationSchema={bookingSchema}
             onSubmit={handleSubmit}
           >
-            {({ errors, touched, values }) => (
+            {({ errors, touched, values, setFieldValue }) => (
               <Form className="space-y-4">
                 <div>
                   <Label htmlFor="attendee_name">Attendee Name</Label>
@@ -118,6 +120,13 @@ export const BookEventPage = () => {
                     min="1"
                     step="1"
                     as={Input}
+                    onChange={handleQuantityOnchange(setFieldValue, 'quantity')}
+                    onKeyDown={(e: any) => {
+                      // Block decimal, negative, and scientific notation
+                      if ([".", ",", "-", "e", "E", "+"].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                   />
                   {errors.quantity && touched.quantity && (
                     <p className="text-sm text-destructive mt-1">

@@ -8,8 +8,7 @@ interface UseEventsParams {
   limit?: number;
   created_by?: number;
   own_events?: number;
-  date_from?: string;
-  date_to?: string;
+  date?: string;
   q?: string;
 }
 
