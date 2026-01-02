@@ -103,12 +103,8 @@ class BookingService {
     ];
 
     // Role-based visibility
-    if (userRole === UserRole.CUSTOMER) {
+    if (userRole === UserRole.CUSTOMER || userRole === UserRole.EVENT_MANAGER) {
       where.user_id = userId;
-    }
-
-    if (userRole === UserRole.EVENT_MANAGER) {
-      include[0].where = { created_by: userId };
     }
 
     const { count, rows } = await Booking.findAndCountAll({
@@ -134,6 +130,7 @@ class BookingService {
       booking_amount: booking.booking_amount,
       createdAt: booking.createdAt,
       event: {
+        id: booking.event.id,
         title: booking.event.title,
         date: booking.event.date,
         location: booking.event.location,

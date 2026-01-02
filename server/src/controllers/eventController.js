@@ -17,17 +17,9 @@ const createEvent = async (req, res, next) => {
       stripUnknown: true,
     });
 
-    // Convert date to start of day in UTC before passing to service
-    if (validatedData.date) {
-      const dateStr = validatedData.date;
-      // If it's just YYYY-MM-DD, convert to UTC midnight
-      // if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      //   validatedData.date = new Date(dateStr + "T00:00:00.000Z");
-      // } else {
-        validatedData.date = new Date(dateStr);
-      // }
-    }
+    console.log("Controller - Validated data:", validatedData);
 
+    // Keep date as string, service will handle conversion
     const event = await eventService.createEvent(validatedData, req.user.id);
 
     return new CreatedResponse("Event created successfully", event).send(res);
@@ -52,15 +44,7 @@ const updateEvent = async (req, res, next) => {
       stripUnknown: true,
     });
 
-    // Convert date to start of day in UTC
-    if (validatedData.date) {
-      const dateStr = validatedData.date;
-      // if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      //   validatedData.date = new Date(dateStr + "T00:00:00.000Z");
-      // } else {
-        validatedData.date = new Date(dateStr);
-      // }
-    }
+    console.log("Controller - Update validated data:", validatedData);
 
     const event = await eventService.updateEvent(
       parseInt(req.params.id),
@@ -107,6 +91,8 @@ const getEvents = async (req, res, next) => {
     if (validatedQuery.q) {
       filters.q = validatedQuery.q;
     }
+
+    filters.userId = req.user.id;
 
     const result = await eventService.getEvents(
       page,

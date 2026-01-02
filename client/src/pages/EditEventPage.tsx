@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { eventSchema } from "@/validators/eventValidators";
-import { EventFormValues } from "@/types";
+import { Booking, EventFormValues } from "@/types";
 import { handleQuantityOnchange, cn } from "@/lib/utils";
 
 export const EditEventPage = () => {
@@ -45,6 +45,11 @@ export const EditEventPage = () => {
 
   const event = data?.data;
 
+  const bookedTickets = data?.data?.bookings?.reduce(
+  (sum: number, booking: Booking) => sum + (booking.quantity || 0),
+  0
+) || 0;
+
   return (
     <div className="max-w-2xl mx-auto">
       <Card>
@@ -61,7 +66,7 @@ export const EditEventPage = () => {
               ticket_price: event!.ticket_price,
               capacity: event!.capacity,
             }}
-            validationSchema={eventSchema}
+            validationSchema={eventSchema(bookedTickets)}
             onSubmit={handleSubmit}
           >
             {({ errors, touched, setFieldValue, values }) => {
@@ -129,7 +134,7 @@ export const EditEventPage = () => {
                             // Disable past dates
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
-                            return date <= today;
+                            return date < today;
                           }}
                           initialFocus
                         />

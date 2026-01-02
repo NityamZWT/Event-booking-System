@@ -59,9 +59,6 @@ axiosInstance.interceptors.response.use(
           toast.error(
             errorMessage || "Your session has expired. Please login again."
           );
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 1000);
         }
         break;
 

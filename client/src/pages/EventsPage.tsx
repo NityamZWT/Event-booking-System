@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, X, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/store/hook";
 import { useEvents, useDeleteEvent } from "@/hooks/useEvents";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -20,8 +21,7 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import {
   formatDate,
-  formatCurrency,
-  convertLocalToUTCDateString,
+  formatCurrency
 } from "@/lib/utils";
 import { Event, Pagination, UserRole } from "@/types";
 
@@ -30,53 +30,171 @@ export const EventsPage = () => {
   const [q, setQ] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-
+  const [deleteEventId, setDeleteEventId] = useState<number | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Ref for search input focus
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // Throttle timer ref
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   const { user } = useAppSelector((state) => state.auth);
 
-  const { data, isLoading, error } = useEvents({
+  const { data, isLoading, error, refetch } = useEvents({
     page,
     limit: 10,
     q,
-    date: selectedDate ? convertLocalToUTCDateString(selectedDate) : undefined,
+    date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined,
   });
 
   const navigate = useNavigate();
   const deleteEvent = useDeleteEvent();
 
-  const handleSearch = () => {
-    setQ(searchInput);
-    setPage(1);
-  };
-
-  const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date);
-    setPage(1);
-  };
-
-  const clearDateFilter = () => {
-    setSelectedDate(undefined);
-    setPage(1);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
+  // Throttle function for search
+  const throttleSearch = useCallback((searchTerm: string) => {
+    // Clear any existing timer
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
     }
+    
+    // Show searching state
+    setIsSearching(true);
+    
+    // Set new timer for 300ms delay
+    searchTimerRef.current = setTimeout(async () => {
+      setQ(searchTerm);
+      setPage(1); // Reset to first page on search
+      
+      // Refetch data without full page reload
+      try {
+        await refetch();
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, [refetch]);
+
+  // Handle search input change with throttle
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    
+    // If input is cleared, search immediately
+    if (value === "") {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+      setQ("");
+      setPage(1);
+      setIsSearching(false);
+      refetch(); // Refetch immediately when cleared
+      return;
+    }
+    
+    throttleSearch(value);
   };
 
-  const handleDelete = async () => {
-    if (deleteId) {
+  // Handle Enter key press
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+      setQ(searchInput);
+      setPage(1);
+      setIsSearching(true);
+      
       try {
-        await deleteEvent.mutateAsync(deleteId);
-        setDeleteId(null);
-      } catch {
-        setDeleteId(null);
+        await refetch();
+      } finally {
+        setIsSearching(false);
       }
     }
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  const handleClearAllFilters = async () => {
+    setQ("");
+    setSearchInput("");
+    setSelectedDate(undefined);
+    setPage(1);
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+    
+    // Clear search input and focus on it
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+    
+    setIsSearching(true);
+    try {
+      await refetch();
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleDateSelect = async (date: Date | undefined) => {
+    setSelectedDate(date);
+    setPage(1);
+    setIsSearching(true);
+    try {
+      await refetch();
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const clearDateFilter = async () => {
+    setSelectedDate(undefined);
+    setPage(1);
+    setIsSearching(true);
+    try {
+      await refetch();
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (deleteEventId) {
+      try {
+        await deleteEvent.mutateAsync(deleteEventId);
+        setDeleteEventId(null);
+      } catch {
+        setDeleteEventId(null);
+      }
+    }
+  };
+
+  // Handle page change
+  const handlePageChange = async (newPage: number) => {
+    setPage(newPage);
+    setIsSearching(true);
+    try {
+      await refetch();
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Check if any filters are active
+  const hasActiveFilters = q || selectedDate;
+
+  // Show only loading spinner on initial load
+  if (isLoading && !isSearching && page === 1 && !q && !selectedDate) {
+    return <LoadingSpinner />;
+  }
+
   if (error) return <div>Error loading events</div>;
 
   const events = data?.data?.events || [];
@@ -97,70 +215,152 @@ export const EventsPage = () => {
       </div>
 
       {/* Search and Filter Section */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-        {/* Search Input */}
-        <div className="flex-1 min-w-[200px]">
-          <Input
-            placeholder="Search events by title"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-        </div>
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+          {/* Search Input */}
+          <div className="flex-1 min-w-[200px] relative">
+            <Input
+              ref={searchInputRef}
+              placeholder="Search events by title"
+              value={searchInput}
+              onChange={handleSearchChange}
+              onKeyDown={handleKeyDown}
+              className="pr-10"
+            />
+            {/* Search indicator */}
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              {isSearching ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              ) : (
+                <Search className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+          </div>
 
-        {/* Date Picker */}
-        <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
+          {/* Date Picker */}
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-[240px] justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? (
+                    format(selectedDate, "PPP")
+                  ) : (
+                    <span>Filter by date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Clear Date Button */}
+            {selectedDate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearDateFilter}
+                className="h-10 px-3"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Search Button */}
+          <div className="flex gap-2">
+            {hasActiveFilters && (
               <Button
                 variant="outline"
-                className="w-[240px] justify-start text-left font-normal"
+                onClick={handleClearAllFilters}
+                className="flex items-center gap-2"
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? (
-                  format(selectedDate, "PPP") // Formatted local date
-                ) : (
-                  <span>Filter by date</span>
-                )}
+                <X className="h-4 w-4" />
+                Clear All
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-
-          {/* Clear Date Button */}
-          {selectedDate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearDateFilter}
-              className="h-10 px-3"
-            >
-              Clear
-            </Button>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Search Button */}
-        <div>
-          <Button onClick={handleSearch}>Search</Button>
-        </div>
+        {/* Active Filters Display */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Active filters:</span>
+            {q && (
+              <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                Search: "{q}"
+                <button
+                  onClick={() => {
+                    setQ("");
+                    setSearchInput("");
+                    setPage(1);
+                    if (searchTimerRef.current) {
+                      clearTimeout(searchTimerRef.current);
+                    }
+                    if (searchInputRef.current) {
+                      searchInputRef.current.focus();
+                    }
+                    refetch();
+                  }}
+                  className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            {selectedDate && (
+              <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                Date: {format(selectedDate, "PPP")}
+                <button
+                  onClick={clearDateFilter}
+                  className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Events List */}
-      <div className="grid gap-4">
+      {/* Events List - Shows loading only for this section */}
+      <div className="grid gap-4 relative min-h-[200px]">
+        {isSearching ? (
+          <div className="absolute inset-0 flex items-start justify-center bg-background/50 backdrop-blur-sm z-10">
+            <div className="text-center space-y-2">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">Loading events...</p>
+            </div>
+          </div>
+        ) : null}
+        
         {events.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            {selectedDate || q
-              ? "No events match your search criteria"
-              : "No events found"}
-          </p>
+          <div className="text-center py-12 space-y-4">
+            <p className="text-muted-foreground text-lg">
+              {hasActiveFilters
+                ? "No events match your search criteria"
+                : "No events found"}
+            </p>
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                onClick={handleClearAllFilters}
+                className="flex items-center gap-2 mx-auto"
+              >
+                <X className="h-4 w-4" />
+                Clear all filters
+              </Button>
+            )}
+          </div>
         ) : (
           events.map((event: Event) => (
             <Card
@@ -181,9 +381,9 @@ export const EventsPage = () => {
                         {event.title}
                       </h3>
                       {event.pastEvent === true ? (
-                        <span className="bg-red-500 text-white rounded-md p-0.5 m-0">
-                          Past Event
-                        </span>
+                        <Badge variant="destructive" className="text-xs">
+                      Past Event
+                    </Badge>
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm text-muted-foreground">
@@ -196,44 +396,68 @@ export const EventsPage = () => {
                     className="flex gap-2"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {!event.pastEvent &&
-                      (() => {
-                        const bookedTickets =
-                          event.bookings?.reduce(
-                            (sum: number, booking: any) =>
-                              sum + (booking.quantity || 0),
-                            0
-                          ) || 0;
-                        const remaining = event.capacity - bookedTickets;
-                        const isFull = remaining <= 0;
-                        return !isFull ? (
-                          <Link to={`/events/${event.id}/book`}>
-                            <Button size="sm">Book</Button>
-                          </Link>
-                        ) : (
-                          <Button size="sm" disabled variant="outline">
-                            Full
+                    {(() => {
+                      const bookedTickets = event.bookings?.reduce(
+                        (sum: number, booking: any) => sum + (booking.quantity || 0),
+                        0
+                      ) || 0;
+                      const remaining = event.capacity - bookedTickets;
+                      const isFull = remaining <= 0;
+                      
+                      if (event.pastEvent) {
+                        return null;
+                      }
+
+                      if (isFull) return <Button type="button" variant='ghost' disabled={true}>Full</Button>
+                      
+                      return (
+                        <Link to={`/events/${event.id}/book`}>
+                          <Button size="sm">Book</Button>
+                        </Link>
+                      );
+                    })()}
+
+                    {(() => {
+                      const canEdit = 
+                        user?.role === UserRole.ADMIN || 
+                        (user?.role === UserRole.EVENT_MANAGER && 
+                         event.created_by === user?.id && 
+                         !event.pastEvent);
+                      
+                      return canEdit ? (
+                        <Link to={`/events/${event.id}/edit`}>
+                          <Button size="sm" variant="outline">Edit</Button>
+                        </Link>
+                      ) : null;
+                    })()}
+
+                    {/* Delete Button with all rules */}
+                    {(() => {
+                      const bookedTickets = event.bookings?.reduce(
+                        (sum: number, booking: any) => sum + (booking.quantity || 0),
+                        0
+                      ) || 0;
+                      const hasBookings = bookedTickets > 0;
+                      
+                      if (user?.role === UserRole.ADMIN) {
+                        const canDelete = event.pastEvent ? true : !hasBookings;
+                        
+                        return canDelete ? (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteEventId(event.id);
+                            }}
+                          >
+                            Delete
                           </Button>
-                        );
-                      })()}
-                    {(user?.role === UserRole.ADMIN ||
-                      (user?.role === UserRole.EVENT_MANAGER &&
-                        event.created_by === user.id)) && (
-                      <Link to={`/events/${event.id}/edit`}>
-                        <Button size="sm" variant="outline">
-                          Edit
-                        </Button>
-                      </Link>
-                    )}
-                    {user?.role === UserRole.ADMIN && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => setDeleteId(event.id)}
-                      >
-                        Delete
-                      </Button>
-                    )}
+                        ) : null;
+                      }
+                      
+                      return null;
+                    })()}
                   </div>
                 </div>
               </CardContent>
@@ -243,11 +467,11 @@ export const EventsPage = () => {
       </div>
 
       {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {pagination.totalPages > 1 && !isSearching && (
         <div className="flex justify-center gap-2">
           <Button
             variant="outline"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(Math.max(1, page - 1))}
             disabled={page === 1}
           >
             Previous
@@ -257,7 +481,7 @@ export const EventsPage = () => {
           </span>
           <Button
             variant="outline"
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => handlePageChange(page + 1)}
             disabled={page >= pagination.totalPages}
           >
             Next
@@ -267,8 +491,8 @@ export const EventsPage = () => {
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
-        open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
+        open={deleteEventId !== null}
+        onOpenChange={(open) => !open && setDeleteEventId(null)}
         onConfirm={handleDelete}
         title="Delete Event"
         description="Are you sure you want to delete this event? This action cannot be undone."

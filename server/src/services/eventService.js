@@ -10,41 +10,111 @@ const { UserRole } = require("../constants/common.types");
 const { Event, User, Booking, sequelize } = db;
 
 class EventService {
-async createEvent(eventData, userId) {
-  return await sequelize.transaction(async (transaction) => {
-    // Handle date conversion
-    let eventDate = eventData.date;
+  // Helper function to create date at midnight local time
+  createLocalDate(dateInput) {
+    console.log("createLocalDate input:", dateInput, typeof dateInput);
 
-    if (typeof eventDate === 'string') {
-      const parsedDate = new Date(eventDate);
-      
-      if (!isNaN(parsedDate.getTime())) {
-        eventDate = parsedDate;
+    try {
+      if (typeof dateInput === "string") {
+        // Parse string like "2026-01-01" or ISO string
+        if (dateInput.includes("T")) {
+          // ISO string like "2026-01-01T00:00:00.000Z"
+          const dateObj = new Date(dateInput);
+          return new Date(
+            dateObj.getFullYear(),
+            dateObj.getMonth(),
+            dateObj.getDate(),
+            0,
+            0,
+            0,
+            0
+          );
+        } else {
+          // YYYY-MM-DD format
+          const [year, month, day] = dateInput.split("-").map(Number);
+          return new Date(year, month - 1, day, 0, 0, 0, 0);
+        }
+      } else if (dateInput instanceof Date) {
+        // Already a Date object
+        return new Date(
+          dateInput.getFullYear(),
+          dateInput.getMonth(),
+          dateInput.getDate(),
+          0,
+          0,
+          0,
+          0
+        );
+      } else {
+        console.error("Invalid date input type:", typeof dateInput, dateInput);
+        throw new Error(`Invalid date input: ${dateInput}`);
       }
+    } catch (error) {
+      console.error("Error in createLocalDate:", error);
+      throw new Error(`Invalid date format: ${dateInput}`);
     }
-    
-    const event = await Event.create(
-      {
-        ...eventData,
-        date: eventDate,
-        created_by: userId,
-      },
-      { transaction }
-    );
+  }
 
-    // Return date in ISO format for consistency
-    return {
-      id: event.id,
-      title: event.title,
-      date: event.date.toISOString(),
-      location: event.location,
-      ticket_price: event.ticket_price,
-      capacity: event.capacity,
-      created_by: userId,
-      pastEvent: new Date(event.date) < new Date(),
-    };
-  });
-}
+  compareDatesOnly(date1, date2) {
+    try {
+      const d1 = new Date(
+        date1.getFullYear(),
+        date1.getMonth(),
+        date1.getDate()
+      );
+      const d2 = new Date(
+        date2.getFullYear(),
+        date2.getMonth(),
+        date2.getDate()
+      );
+      return d1 < d2;
+    } catch (error) {
+      console.error("Error in compareDatesOnly:", error);
+      return false;
+    }
+  }
+
+  async createEvent(eventData, userId) {
+    return await sequelize.transaction(async (transaction) => {
+      let eventDate = eventData.date;
+
+      console.log("Creating event with data:", eventData);
+      console.log("Date received:", eventDate, typeof eventDate);
+
+      if (typeof eventDate === "string") {
+        // Create date at midnight local time (IST)
+        eventDate = this.createLocalDate(eventDate);
+        console.log("Created local date:", eventDate.toString());
+      }
+
+      const event = await Event.create(
+        {
+          ...eventData,
+          date: eventDate,
+          created_by: userId,
+        },
+        { transaction }
+      );
+
+      // Check if event is in the past (date-only comparison)
+      const isPastEvent = this.compareDatesOnly(event.date, new Date());
+
+      console.log("Event created successfully. ID:", event.id);
+      console.log("Stored date:", event.date.toString());
+      console.log("Is past event?", isPastEvent);
+
+      return {
+        id: event.id,
+        title: event.title,
+        date: event.date,
+        location: event.location,
+        ticket_price: event.ticket_price,
+        capacity: event.capacity,
+        created_by: userId,
+        pastEvent: isPastEvent,
+      };
+    });
+  }
 
   async getEvents(page = 1, limit = 10, filters = {}, userRole) {
     const offset = (page - 1) * limit;
@@ -55,13 +125,42 @@ async createEvent(eventData, userId) {
     }
 
     if (filters.date) {
-      where[Op.and] = [
-        sequelize.where(
-          sequelize.fn("DATE", sequelize.col("date")),
-          "=",
-          filters.date
-        ),
-      ];
+      console.log("Filtering by date:", filters.date, typeof filters.date);
+
+      try {
+        let filterDate;
+        if (typeof filters.date === "string") {
+          const [year, month, day] = filters.date.split("-").map(Number);
+          filterDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+        } else if (filters.date instanceof Date) {
+          // Already a Date object
+          filterDate = new Date(
+            filters.date.getFullYear(),
+            filters.date.getMonth(),
+            filters.date.getDate(),
+            0,
+            0,
+            0,
+            0
+          );
+        } else {
+          console.error("Invalid date filter type:", typeof filters.date);
+          throw new Error("Invalid date filter format");
+        }
+
+        const nextDay = new Date(filterDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        console.log("Filter date range:", filterDate, "to", nextDay);
+
+        where.date = {
+          [Op.gte]: filterDate,
+          [Op.lt]: nextDay,
+        };
+      } catch (error) {
+        console.error("Error processing date filter:", error);
+        throw new Error(`Invalid date format for filter: ${filters.date}`);
+      }
     }
 
     if (filters.q) {
@@ -103,13 +202,16 @@ async createEvent(eventData, userId) {
       bookedMap[booking.event_id] = parseInt(booking.total_quantity) || 0;
     });
 
-    // Build minimal response - only what frontend actually uses
     const events = rows.map((event) => {
       const bookedTickets = bookedMap[event.id] || 0;
-      // const remaining = event.capacity - bookedTickets;
-      const isPastEvent = new Date(event.date) < new Date();
 
-      // For admin or event manager who created the event
+      // Check if event is in the past (date-only comparison)
+      const isPastEvent = this.compareDatesOnly(event.date, new Date());
+
+      console.log(`Event ${event.id}:`);
+      console.log(`  Date: ${event.date.toString()}`);
+      console.log(`  Is Past: ${isPastEvent}`);
+
       let canEdit = false;
       if (
         userRole === UserRole.ADMIN ||
@@ -127,13 +229,9 @@ async createEvent(eventData, userId) {
         ticket_price: event.ticket_price,
         capacity: event.capacity,
         created_by: event.created_by,
-        // Only include fields the frontend actually uses
-        bookings: [
-          // Minimal array for reduce() to work
-          { quantity: bookedTickets },
-        ],
+        bookings: [{ quantity: bookedTickets }],
         pastEvent: isPastEvent,
-        _canEdit: canEdit, // Internal flag for frontend logic
+        _canEdit: canEdit,
       };
     });
 
@@ -167,7 +265,8 @@ async createEvent(eventData, userId) {
       throw new NotFoundError("Event not found");
     }
 
-    const isPastEvent = new Date(event.date) < new Date();
+    // Check if event is in the past (date-only comparison)
+    const isPastEvent = this.compareDatesOnly(event.date, new Date());
 
     // Base response for all users
     const response = {
@@ -233,7 +332,14 @@ async createEvent(eventData, userId) {
     return await sequelize.transaction(async (transaction) => {
       const event = await Event.findByPk(eventId, {
         transaction,
-        attributes: ["id", "created_by"],
+        attributes: ["id", "created_by", "capacity"],
+        include: [
+          {
+            model: Booking,
+            as: "bookings",
+            attributes: ["id", "quantity"],
+          },
+        ],
       });
 
       if (!event) {
@@ -246,13 +352,54 @@ async createEvent(eventData, userId) {
         );
       }
 
-      // If a non-admin is updating the date, ensure it's in the future
-      if (updateData.date && userRole !== UserRole.ADMIN) {
-        const newDate = new Date(updateData.date);
-        if (isNaN(newDate.getTime()) || newDate <= new Date()) {
-          throw new ValidationError("Event date must be in the future", {
-            date: "Event date must be in the future",
-          });
+      // Calculate total booked tickets
+      const bookedTickets =
+        event.bookings?.reduce(
+          (sum, booking) => sum + (booking.quantity || 0),
+          0
+        ) || 0;
+
+      // Validate capacity is not less than booked tickets
+      if (updateData.capacity !== undefined) {
+        const newCapacity = parseInt(updateData.capacity, 10);
+
+        if (newCapacity < bookedTickets) {
+          throw new ValidationError(
+            `Capacity cannot be less than ${bookedTickets} (already booked tickets)`,
+            {
+              capacity: `Capacity cannot be less than ${bookedTickets} (already booked tickets)`,
+            }
+          );
+        }
+      }
+
+      // Handle date conversion if updating date
+      if (updateData.date && typeof updateData.date === "string") {
+        // Create date at midnight local time
+        updateData.date = this.createLocalDate(updateData.date);
+
+        // Date validation for non-admin users
+        if (userRole !== UserRole.ADMIN) {
+          const today = new Date();
+          const todayOnly = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+          );
+          const eventDateOnly = new Date(
+            updateData.date.getFullYear(),
+            updateData.date.getMonth(),
+            updateData.date.getDate()
+          );
+
+          if (this.compareDatesOnly(eventDateOnly, todayOnly)) {
+            throw new ValidationError(
+              "Event date must be today or in the future",
+              {
+                date: "Event date must be today or in the future",
+              }
+            );
+          }
         }
       }
 
@@ -275,6 +422,9 @@ async createEvent(eventData, userId) {
         transaction,
       });
 
+      // Check if event is in the past (date-only comparison)
+      const isPastEvent = this.compareDatesOnly(updatedEvent.date, new Date());
+
       return {
         id: updatedEvent.id,
         title: updatedEvent.title,
@@ -283,7 +433,7 @@ async createEvent(eventData, userId) {
         ticket_price: updatedEvent.ticket_price,
         capacity: updatedEvent.capacity,
         created_by: updatedEvent.created_by,
-        pastEvent: new Date(updatedEvent.date) < new Date(),
+        pastEvent: isPastEvent,
       };
     });
   }
