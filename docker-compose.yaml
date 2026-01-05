@@ -20,7 +20,7 @@ services:
     container_name: event-api
     restart: unless-stopped
     env_file:
-      - ./server/.env
+      - ./server/.env.docker
     depends_on:
       db:
         condition: service_healthy
