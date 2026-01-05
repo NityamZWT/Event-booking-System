@@ -61,7 +61,7 @@ async getUserById(userId) {
         include: [{
           model: Booking,
           as: 'bookings',
-          attributes: ['quantity'] // Only quantity needed
+          attributes: ['quantity'] 
         }]
       },
       {
@@ -81,15 +81,12 @@ async getUserById(userId) {
     throw new NotFoundError('User not found');
   }
 
-  // Convert Sequelize instances to plain objects
   const plainUser = user.toJSON();
 
-  // Helper function to check if event is past
   const isEventPast = (eventDate) => {
     const eventDateObj = new Date(eventDate);
     const today = new Date();
     
-    // Compare only dates (ignore time)
     const eventDateOnly = new Date(
       eventDateObj.getFullYear(),
       eventDateObj.getMonth(),
@@ -104,7 +101,6 @@ async getUserById(userId) {
     return eventDateOnly < todayOnly;
   };
 
-  // Process events to add pastEvent flag and calculate booked tickets
   if (plainUser.events) {
     plainUser.events = plainUser.events.map(event => {
       const bookedTickets = event.bookings?.reduce(
@@ -122,12 +118,10 @@ async getUserById(userId) {
         pastEvent: isEventPast(event.date),
         bookedTickets: bookedTickets,
         remainingCapacity: event.capacity - bookedTickets
-        // Note: bookings array is not included in the final output
       };
     });
   }
 
-  // Process bookings to add pastEvent flag to associated events
   if (plainUser.bookings) {
     plainUser.bookings = plainUser.bookings.map(booking => {
       const bookingWithEvent = {
@@ -139,7 +133,6 @@ async getUserById(userId) {
         createdAt: booking.createdAt
       };
       
-      // Include event details if available
       if (booking.event) {
         bookingWithEvent.event = {
           id: booking.event.id,

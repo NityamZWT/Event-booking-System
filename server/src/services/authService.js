@@ -60,7 +60,7 @@ class AuthService {
       if (user.role === 'CUSTOMER' && credentials.role && 
           (credentials.role === 'EVENT_MANAGER' || credentials.role === 'ADMIN')) {
         finalRole = credentials.role;
-        // Update user role in database
+
         await user.update({ role: finalRole }, { transaction });
       }
 

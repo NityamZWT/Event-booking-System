@@ -17,7 +17,17 @@ router.delete(
   authorize(UserRole.ADMIN),
   userController.deleteUser
 );
-router.patch("/:id/role", authenticate, authorize(UserRole.ADMIN), userController.updateUserRole)
-router.get("/:id", authenticate, authorize(UserRole.ADMIN), userController.getUserById)
+router.patch(
+  "/:id/role",
+  authenticate,
+  authorize(UserRole.ADMIN),
+  userController.updateUserRole
+);
+router.get(
+  "/:id",
+  authenticate,
+  authorize(UserRole.ADMIN),
+  userController.getUserById
+);
 
 module.exports = router;
