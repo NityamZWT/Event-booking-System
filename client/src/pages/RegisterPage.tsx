@@ -34,7 +34,7 @@ export const RegisterPage = () => {
             onSubmit={(values) => register(values as RegisterData)}
             submitLabel={isRegisterLoading ? "Registering..." : "Register"}
             isLoading={isRegisterLoading}
-            hideRole={true}
+            hideRole={false}
           />
           <p className="text-sm text-center text-muted-foreground mt-3">
             Already have an account?{" "}

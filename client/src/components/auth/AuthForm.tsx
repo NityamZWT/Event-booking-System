@@ -1,9 +1,15 @@
 import React from "react";
-import { Formik, Form, Field } from "formik";
+import { Formik, Form, Field, FieldProps } from "formik";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { UserRole } from "@/types";
 import * as Yup from "yup";
 
@@ -25,6 +31,28 @@ interface AuthFormProps {
   hideRole?: boolean;
 }
 
+// Custom Select Field component for Formik
+const CustomSelectField = ({
+  field,
+  form,
+  children,
+  ...props
+}: FieldProps & { children: React.ReactNode }) => {
+  const handleChange = (value: string) => {
+    form.setFieldValue(field.name, value);
+  };
+
+  return (
+    <Select
+      value={field.value || ""}
+      onValueChange={handleChange}
+      {...props}
+    >
+      {children}
+    </Select>
+  );
+};
+
 export const AuthForm: React.FC<AuthFormProps> = ({
   mode,
   initialValues,
@@ -40,7 +68,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       validationSchema={validationSchema}
       onSubmit={onSubmit}
     >
-      {({ errors, touched }) => (
+      {({ errors, touched, values }) => (
         <Form className="space-y-4">
           {mode === "register" && (
             <>
@@ -49,7 +77,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 <Field name="first_name" as={Input} />
                 {errors.first_name && touched.first_name && (
                   <p className="text-sm text-destructive mt-1">
-                    {errors.first_name}
+                    {errors.first_name as string}
                   </p>
                 )}
               </div>
@@ -59,7 +87,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 <Field name="last_name" as={Input} />
                 {errors.last_name && touched.last_name && (
                   <p className="text-sm text-destructive mt-1">
-                    {errors.last_name}
+                    {errors.last_name as string}
                   </p>
                 )}
               </div>
@@ -70,7 +98,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <Label htmlFor="email">Email</Label>
             <Field name="email" type="email" as={Input} />
             {errors.email && touched.email && (
-              <p className="text-sm text-destructive mt-1">{errors.email}</p>
+              <p className="text-sm text-destructive mt-1">{errors.email as string}</p>
             )}
           </div>
 
@@ -78,20 +106,25 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <Label htmlFor="password">Password</Label>
             <Field name="password" type="password" as={Input} />
             {errors.password && touched.password && (
-              <p className="text-sm text-destructive mt-1">{errors.password}</p>
+              <p className="text-sm text-destructive mt-1">{errors.password as string}</p>
             )}
           </div>
 
-          {!hideRole && (
+          {mode === "register" && !hideRole && (
             <div>
               <Label htmlFor="role">Role</Label>
-              <Field name="role" as={Select}>
-                <option value={UserRole.CUSTOMER}>Customer</option>
-                <option value={UserRole.EVENT_MANAGER}>Event Manager</option>
-                <option value={UserRole.ADMIN}>Admin</option>
+              <Field name="role" component={CustomSelectField}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UserRole.CUSTOMER}>Customer</SelectItem>
+                  <SelectItem value={UserRole.EVENT_MANAGER}>Event Manager</SelectItem>
+                  <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                </SelectContent>
               </Field>
               {errors.role && touched.role && (
-                <p className="text-sm text-destructive mt-1">{errors.role}</p>
+                <p className="text-sm text-destructive mt-1">{errors.role as string}</p>
               )}
             </div>
           )}
