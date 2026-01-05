@@ -262,18 +262,6 @@ export const EventsPage = () => {
                 />
               </PopoverContent>
             </Popover>
-
-            {/* Clear Date Button */}
-            {selectedDate && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearDateFilter}
-                className="h-10 px-3"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
           </div>
 
           {/* Search Button */}

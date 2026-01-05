@@ -20,7 +20,7 @@ services:
     container_name: event-api
     restart: unless-stopped
     env_file:
-      - ./server/.env.production
+      - ./server/.env
     depends_on:
       db:
         condition: service_healthy
@@ -33,7 +33,7 @@ services:
       context: ./server
     container_name: event-seeder
     env_file:
-      - ./server/.env.docker
+      - ./server/.env
     depends_on:
       db:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
       context: ./client
     container_name: event-web
     env_file:
-      - ./client/.env.production
+      - ./client/.env
     restart: unless-stopped
     ports:
       - "3000:5173"
