@@ -10,15 +10,12 @@ const { UserRole } = require("../constants/common.types");
 const { Event, User, Booking, sequelize } = db;
 
 class EventService {
-  // Helper function to create date at midnight local time
   createLocalDate(dateInput) {
     console.log("createLocalDate input:", dateInput, typeof dateInput);
 
     try {
       if (typeof dateInput === "string") {
-        // Parse string like "2026-01-01" or ISO string
         if (dateInput.includes("T")) {
-          // ISO string like "2026-01-01T00:00:00.000Z"
           const dateObj = new Date(dateInput);
           return new Date(
             dateObj.getFullYear(),
@@ -30,12 +27,10 @@ class EventService {
             0
           );
         } else {
-          // YYYY-MM-DD format
           const [year, month, day] = dateInput.split("-").map(Number);
           return new Date(year, month - 1, day, 0, 0, 0, 0);
         }
       } else if (dateInput instanceof Date) {
-        // Already a Date object
         return new Date(
           dateInput.getFullYear(),
           dateInput.getMonth(),
@@ -247,7 +242,7 @@ class EventService {
   }
 
   async getEventById(eventId, userRole) {
-    // Get only essential fields
+
     const event = await Event.findByPk(eventId, {
       attributes: [
         "id",
@@ -265,10 +260,8 @@ class EventService {
       throw new NotFoundError("Event not found");
     }
 
-    // Check if event is in the past (date-only comparison)
     const isPastEvent = this.compareDatesOnly(event.date, new Date());
 
-    // Base response for all users
     const response = {
       id: event.id,
       title: event.title,
@@ -281,9 +274,7 @@ class EventService {
       pastEvent: isPastEvent,
     };
 
-    // Different data based on user role
     if (userRole === UserRole.ADMIN) {
-      // ADMIN: Get detailed bookings
       const detailedBookings = await Booking.findAll({
         where: { event_id: eventId },
         attributes: [
@@ -302,7 +293,6 @@ class EventService {
         0
       );
 
-      // Admin gets full bookings array with details
       response.bookings = detailedBookings.map((booking) => ({
         id: booking.id,
         attendee_name: booking.attendee_name,
@@ -313,13 +303,11 @@ class EventService {
       response.totalBooked = totalBooked;
       response.remainingTickets = event.capacity - totalBooked;
     } else {
-      // NON-ADMIN: Just get total booked count
       const totalBooked =
         (await Booking.sum("quantity", {
           where: { event_id: eventId },
         })) || 0;
 
-      // Non-admin gets minimal bookings array (just for reduce() to work)
       response.bookings = [{ quantity: totalBooked }];
       response.totalBooked = totalBooked;
       response.remainingTickets = event.capacity - totalBooked;
@@ -352,14 +340,12 @@ class EventService {
         );
       }
 
-      // Calculate total booked tickets
       const bookedTickets =
         event.bookings?.reduce(
           (sum, booking) => sum + (booking.quantity || 0),
           0
         ) || 0;
 
-      // Validate capacity is not less than booked tickets
       if (updateData.capacity !== undefined) {
         const newCapacity = parseInt(updateData.capacity, 10);
 
@@ -373,12 +359,9 @@ class EventService {
         }
       }
 
-      // Handle date conversion if updating date
       if (updateData.date && typeof updateData.date === "string") {
-        // Create date at midnight local time
         updateData.date = this.createLocalDate(updateData.date);
 
-        // Date validation for non-admin users
         if (userRole !== UserRole.ADMIN) {
           const today = new Date();
           const todayOnly = new Date(
@@ -408,7 +391,6 @@ class EventService {
         transaction,
       });
 
-      // Return only updated essential fields
       const updatedEvent = await Event.findByPk(eventId, {
         attributes: [
           "id",
@@ -422,7 +404,6 @@ class EventService {
         transaction,
       });
 
-      // Check if event is in the past (date-only comparison)
       const isPastEvent = this.compareDatesOnly(updatedEvent.date, new Date());
 
       return {
@@ -461,7 +442,6 @@ class EventService {
         );
       }
 
-      // delete related bookings first
       await Booking.destroy({ where: { event_id: eventId }, transaction });
       await Event.destroy({
         where: { id: eventId },

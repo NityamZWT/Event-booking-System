@@ -18,8 +18,6 @@ const createEvent = async (req, res, next) => {
     });
 
     console.log("Controller - Validated data:", validatedData);
-
-    // Keep date as string, service will handle conversion
     const event = await eventService.createEvent(validatedData, req.user.id);
 
     return new CreatedResponse("Event created successfully", event).send(res);

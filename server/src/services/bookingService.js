@@ -102,7 +102,6 @@ class BookingService {
       },
     ];
 
-    // Role-based visibility
     if (userRole === UserRole.CUSTOMER || userRole === UserRole.EVENT_MANAGER) {
       where.user_id = userId;
     }
@@ -122,7 +121,6 @@ class BookingService {
       ],
     });
 
-    // Transform rows to only include required data
     const bookings = rows.map(booking => ({
       id: booking.id,
       attendee_name: booking.attendee_name,
@@ -171,7 +169,6 @@ class BookingService {
       throw new NotFoundError("Booking not found");
     }
 
-    // Authorization checks
     if (userRole === UserRole.CUSTOMER && booking.user_id !== userId) {
       throw new AuthorizationError("Access denied to this booking");
     }
@@ -185,7 +182,6 @@ class BookingService {
       }
     }
 
-    // Return only required data
     return {
       id: booking.id,
       attendee_name: booking.attendee_name,
@@ -216,7 +212,6 @@ class BookingService {
       }
 
       if (userRole === UserRole.EVENT_MANAGER) {
-        // Check if event belongs to this manager
         const event = await Event.findByPk(booking.event_id, {
           transaction,
           attributes: ["created_by"]
