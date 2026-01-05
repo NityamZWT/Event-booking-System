@@ -122,12 +122,12 @@ export const EventDetailPage = () => {
 
           <CardContent className="space-y-6">
             {/* Event Description */}
-            <div>
+            { event?.description && <div>
               <h3 className="text-lg font-semibold mb-2">Description</h3>
               <p className="text-muted-foreground leading-relaxed">
                 {event?.description}
               </p>
-            </div>
+            </div>}
 
             <Separator />
 

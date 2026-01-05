@@ -1,19 +1,31 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { useUsers, useDeleteUser } from "@/hooks/useUsers";
 import { Pagination, UserRole } from "@/types";
+import { useNavigate } from "react-router-dom";
 
 export const AdminUsersPage = () => {
   const [page, setPage] = useState(1);
   const [role, setRole] = useState<string | undefined>(undefined);
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [deleteUserName, setDeleteUserName] = useState<string>("");
-  
-  const { data, isLoading, error, refetch } = useUsers({ page, limit: 10, role });
+  const navigate = useNavigate();
+
+  const { data, isLoading, error, refetch } = useUsers({
+    page,
+    limit: 10,
+    role,
+  });
   const deleteUser = useDeleteUser();
 
   const handleDeleteClick = (userId: number, userName: string) => {
@@ -41,23 +53,30 @@ export const AdminUsersPage = () => {
   const pagination: Pagination = data?.data?.pagination || { totalPages: 0 };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-m-full">
       <h1 className="text-3xl font-bold">Users</h1>
-      
+
       {/* Filter Section */}
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center w-full">
         <Select
-          value={role}
-          onChange={(e) => {
-            const newRole = e.target.value !== "" ? e.target.value : undefined;
+          value={role || ""}
+          onValueChange={(value: UserRole | string) => {
+            const newRole = value !== "All" ? value : undefined;
             setRole(newRole);
-            setPage(1); // Reset to first page when filter changes
+            setPage(1);
           }}
         >
-          <option value="">All</option>
-          <option value={UserRole.CUSTOMER}>Customer</option>
-          <option value={UserRole.EVENT_MANAGER}>Event Manager</option>
-          <option value={UserRole.ADMIN}>Admin</option>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All Roles</SelectItem>
+            <SelectItem value={UserRole.CUSTOMER}>Customer</SelectItem>
+            <SelectItem value={UserRole.EVENT_MANAGER}>
+              Event Manager
+            </SelectItem>
+            <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+          </SelectContent>
         </Select>
       </div>
 
@@ -66,14 +85,16 @@ export const AdminUsersPage = () => {
         <CardHeader>
           <CardTitle>User List</CardTitle>
         </CardHeader>
-        
+
         <CardContent className="min-h-[400px]">
           {/* Loading Overlay */}
           {isLoading && (
             <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
               <div className="text-center space-y-2">
                 <LoadingSpinner />
-                <p className="text-sm text-muted-foreground">Loading users...</p>
+                <p className="text-sm text-muted-foreground">
+                  Loading users...
+                </p>
               </div>
             </div>
           )}
@@ -103,31 +124,42 @@ export const AdminUsersPage = () => {
                   className="p-4 border rounded-lg flex justify-between items-center hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex-1">
-                    <p className="font-semibold">
+                    <h4
+                      className="font-semibold text-decoration-line: underline cursor-pointer max-w-full"
+                      onClick={() => navigate(`/admin/users/${u.id}`)}
+                    >
                       {u.first_name} {u.last_name}
-                    </p>
+                    </h4>
+
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm text-muted-foreground">
                         {u.email}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        u.role === UserRole.ADMIN 
-                          ? 'bg-purple-500/10 text-purple-600'
-                          : u.role === UserRole.EVENT_MANAGER
-                          ? 'bg-blue-500/10 text-blue-600'
-                          : 'bg-green-500/10 text-green-600'
-                      }`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          u.role === UserRole.ADMIN
+                            ? "bg-purple-500/10 text-purple-600"
+                            : u.role === UserRole.EVENT_MANAGER
+                            ? "bg-blue-500/10 text-blue-600"
+                            : "bg-green-500/10 text-green-600"
+                        }`}
+                      >
                         {u.role}
                       </span>
                     </div>
                   </div>
-                  
+
                   {u.role !== UserRole.ADMIN && (
                     <div className="flex items-center">
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => handleDeleteClick(u.id, `${u.first_name} ${u.last_name}`)}
+                        onClick={() =>
+                          handleDeleteClick(
+                            u.id,
+                            `${u.first_name} ${u.last_name}`
+                          )
+                        }
                         disabled={deleteUser.isPending && deleteUserId === u.id}
                         className="min-w-[80px]"
                       >

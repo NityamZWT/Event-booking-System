@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
-  const { logout, changeRole, isLoginLoading } = useAuth();
+  const { logout, isLoginLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,38 +35,38 @@ export const Navbar = () => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
-  const handleRoleChangeClick = (role: UserRole) => {
-    if (!isAuthenticated || !user) {
-      navigate("/login", { state: { role } });
-      return;
-    }
+  // const handleRoleChangeClick = (role: UserRole) => {
+  //   if (!isAuthenticated || !user) {
+  //     navigate("/login", { state: { role } });
+  //     return;
+  //   }
 
-    if (user.role === UserRole.CUSTOMER) {
-      setTargetRole(role);
-      setDialogOpen(true);
-    }
-  };
+  //   if (user.role === UserRole.CUSTOMER) {
+  //     setTargetRole(role);
+  //     setDialogOpen(true);
+  //   }
+  // };
 
-  const handleRoleChangeSubmit = async () => {
-    if (!user || !targetRole || !password) return;
+  // const handleRoleChangeSubmit = async () => {
+  //   if (!user || !targetRole || !password) return;
 
-    try {
-      await changeRole({
-        email: user.email,
-        password,
-        role: targetRole,
-      });
-      setDialogOpen(false);
-      setPassword("");
-      setTargetRole(null);
-      setShowPassword(false);
-      toast.success(`Successfully changed role to ${targetRole}`);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to change role. Please try again.";
-      toast.error(errorMessage);
-    }
-  };
+  //   try {
+  //     await changeRole({
+  //       email: user.email,
+  //       password,
+  //       role: targetRole,
+  //     });
+  //     setDialogOpen(false);
+  //     setPassword("");
+  //     setTargetRole(null);
+  //     setShowPassword(false);
+  //     toast.success(`Successfully changed role to ${targetRole}`);
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   } catch (error: any) {
+  //     const errorMessage = error?.response?.data?.message || error?.message || "Failed to change role. Please try again.";
+  //     toast.error(errorMessage);
+  //   }
+  // };
 
   return (
     <nav className="border-b bg-background">
@@ -112,7 +112,7 @@ export const Navbar = () => {
                   Users
                 </Link>
               )}
-              {user?.role === UserRole.CUSTOMER && (
+              {/* {user?.role === UserRole.CUSTOMER && (
                 <>
                   <button
                     onClick={() => handleRoleChangeClick(UserRole.EVENT_MANAGER)}
@@ -127,7 +127,7 @@ export const Navbar = () => {
                     Become Admin
                   </button>
                 </>
-              )}
+              )} */}
               {(user?.role === UserRole.ADMIN || user?.role === UserRole.EVENT_MANAGER) && (
                 <Link
                   to="/dashboard"
@@ -154,7 +154,7 @@ export const Navbar = () => {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change Role to {targetRole}</DialogTitle>
@@ -213,7 +213,7 @@ export const Navbar = () => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </nav>
   );
 };

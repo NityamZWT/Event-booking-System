@@ -52,13 +52,15 @@ const deleteUser = async (req, res, next) => {
 const updateUserRole = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
-    const { role: newRole } = req.body;
+    const { role } = req.body;
+    console.log(role, "roel");
+    
     const currentUserId = req.user.id;
     const currentUserRole = req.user.role;
 
     const user = await usersService.updateUserRole(
       userId,
-      newRole,
+      role,
       currentUserId,
       currentUserRole
     );
@@ -71,26 +73,10 @@ const updateUserRole = async (req, res, next) => {
   }
 };
 
-const getCurrentUser = async (req, res, next) => {
-  try {
-    const userId = req.user.id;
-
-    const user = await usersService.getUserById(userId);
-
-    return new SuccessResponse(
-      "Current user retrieved successfully",
-      user
-    ).send(res);
-  } catch (error) {
-    next(error);
-  }
-};
-
 module.exports = {
   getUsers,
   getUserById,
   deleteUser,
   updateUserRole,
-  getCurrentUser,
-  getCurrentUser
+  // getCurrentUser,
 }

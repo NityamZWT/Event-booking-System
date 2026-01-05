@@ -17,6 +17,7 @@ import { BookingsPage } from "./pages/BookingsPage";
 import { ManagerDashboard } from "./pages/ManagerDashboard";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { UserRole } from "./types";
+import UserDetailPage from "./pages/UserDetailsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,8 +82,18 @@ function App() {
               <Route
                 path="dashboard"
                 element={
-                  <PrivateRoute allowedRoles={[UserRole.EVENT_MANAGER, UserRole.ADMIN]}>
+                  <PrivateRoute
+                    allowedRoles={[UserRole.EVENT_MANAGER, UserRole.ADMIN]}
+                  >
                     <ManagerDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/users/:id"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN]}>
+                    <UserDetailPage />
                   </PrivateRoute>
                 }
               />
