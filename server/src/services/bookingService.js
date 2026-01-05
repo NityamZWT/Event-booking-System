@@ -62,21 +62,30 @@ class BookingService {
           { transaction }
         );
 
-        return await Booking.findByPk(booking.id, {
+        const createdBooking = await Booking.findByPk(booking.id, {
           include: [
             {
               model: Event,
               as: "event",
-              attributes: ["id", "title", "date", "location", "ticket_price"],
-            },
-            {
-              model: User,
-              as: "user",
-              attributes: ["id", "first_name", "last_name", "email"],
+              attributes: ["id", "title", "date", "location"],
             },
           ],
           transaction,
         });
+
+        // Return only required fields
+        return {
+          id: createdBooking.id,
+          attendee_name: createdBooking.attendee_name,
+          quantity: createdBooking.quantity,
+          booking_amount: createdBooking.booking_amount,
+          createdAt: createdBooking.createdAt,
+          event: {
+            title: createdBooking.event.title,
+            date: createdBooking.event.date,
+            location: createdBooking.event.location,
+          }
+        };
       }
     );
   }
@@ -89,40 +98,47 @@ class BookingService {
       {
         model: Event,
         as: "event",
-        attributes: [
-          "id",
-          "title",
-          "date",
-          "location",
-          "ticket_price",
-          "created_by",
-        ],
+        attributes: ["id", "title", "date", "location"],
       },
     ];
 
-    // Role-based visibility:
-    // - ADMIN: see all bookings
-    // - CUSTOMER: only their own bookings
-    // - EVENT_MANAGER: bookings for events they created
-    if (userRole === UserRole.CUSTOMER) {
+    // Role-based visibility
+    if (userRole === UserRole.CUSTOMER || userRole === UserRole.EVENT_MANAGER) {
       where.user_id = userId;
-    }
-
-    if (userRole === UserRole.EVENT_MANAGER) {
-      // limit bookings to events created by this manager
-      include[0].where = { created_by: userId };
     }
 
     const { count, rows } = await Booking.findAndCountAll({
       where,
       limit,
       offset,
-      order: [["created_at", "DESC"]],
+      order: [["createdAt", "DESC"]],
       include,
+      attributes: [
+        "id",
+        "attendee_name",
+        "quantity",
+        "booking_amount",
+        "createdAt"
+      ],
     });
 
+    // Transform rows to only include required data
+    const bookings = rows.map(booking => ({
+      id: booking.id,
+      attendee_name: booking.attendee_name,
+      quantity: booking.quantity,
+      booking_amount: booking.booking_amount,
+      createdAt: booking.createdAt,
+      event: {
+        id: booking.event.id,
+        title: booking.event.title,
+        date: booking.event.date,
+        location: booking.event.location,
+      }
+    }));
+
     return {
-      bookings: rows,
+      bookings,
       pagination: {
         total: count,
         page,
@@ -138,19 +154,16 @@ class BookingService {
         {
           model: Event,
           as: "event",
-          include: [
-            {
-              model: User,
-              as: "creator",
-              attributes: ["id", "first_name", "last_name", "email"],
-            },
-          ],
+          attributes: ["id", "title", "date", "location"],
         },
-        {
-          model: User,
-          as: "user",
-          attributes: ["id", "first_name", "last_name", "email"],
-        },
+      ],
+      attributes: [
+        "id",
+        "attendee_name",
+        "quantity",
+        "booking_amount",
+        "createdAt",
+        "user_id"
       ],
     });
 
@@ -158,26 +171,41 @@ class BookingService {
       throw new NotFoundError("Booking not found");
     }
 
-    const event = booking.get("event");
-
+    // Authorization checks
     if (userRole === UserRole.CUSTOMER && booking.user_id !== userId) {
       throw new AuthorizationError("Access denied to this booking");
     }
 
-    if (
-      userRole === UserRole.EVENT_MANAGER &&
-      booking.user_id !== userId &&
-      event?.created_by !== userId
-    ) {
-      throw new AuthorizationError("Access denied to this booking");
+    if (userRole === UserRole.EVENT_MANAGER) {
+      const event = await Event.findByPk(booking.event_id, {
+        attributes: ["created_by"],
+      });
+      if (booking.user_id !== userId && event?.created_by !== userId) {
+        throw new AuthorizationError("Access denied to this booking");
+      }
     }
 
-    return booking;
+    // Return only required data
+    return {
+      id: booking.id,
+      attendee_name: booking.attendee_name,
+      quantity: booking.quantity,
+      booking_amount: booking.booking_amount,
+      createdAt: booking.createdAt,
+      event: {
+        title: booking.event.title,
+        date: booking.event.date,
+        location: booking.event.location,
+      }
+    };
   }
 
   async cancelBooking(bookingId, userId, userRole) {
     return await sequelize.transaction(async (transaction) => {
-      const booking = await Booking.findByPk(bookingId, { transaction });
+      const booking = await Booking.findByPk(bookingId, { 
+        transaction,
+        attributes: ["id", "user_id", "event_id"]
+      });
 
       if (!booking) {
         throw new NotFoundError("Booking not found");
@@ -188,10 +216,21 @@ class BookingService {
       }
 
       if (userRole === UserRole.EVENT_MANAGER) {
-        throw new AuthorizationError("Event managers cannot cancel bookings");
+        // Check if event belongs to this manager
+        const event = await Event.findByPk(booking.event_id, {
+          transaction,
+          attributes: ["created_by"]
+        });
+        
+        if (!event || event.created_by !== userId) {
+          throw new AuthorizationError("Event managers cannot cancel bookings");
+        }
       }
 
-      await booking.destroy({ transaction });
+      await Booking.destroy({
+        where: { id: bookingId },
+        transaction
+      });
 
       return { message: "Booking cancelled successfully" };
     });

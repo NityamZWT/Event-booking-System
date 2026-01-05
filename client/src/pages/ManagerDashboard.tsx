@@ -16,9 +16,13 @@ export const ManagerDashboard = () => {
   const { data: analyticsData, isLoading: analyticsLoading } = useAnalytics();
   const [page, setPage] = useState(1);
 
-  const eventsParams: any = user?.role === UserRole.EVENT_MANAGER ? { page, limit: 10, own_events: 1 } : { page, limit: 10 };
+  const eventsParams: any =
+    user?.role === UserRole.EVENT_MANAGER
+      ? { page, limit: 10, own_events: 1 }
+      : { page, limit: 10 };
 
-  const { data: eventsData, isLoading: eventsLoading } = useEvents(eventsParams);
+  const { data: eventsData, isLoading: eventsLoading } =
+    useEvents(eventsParams);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedDeleteId, setSelectedDeleteId] = useState<number | null>(null);
@@ -27,12 +31,18 @@ export const ManagerDashboard = () => {
   if (analyticsLoading || eventsLoading) return <LoadingSpinner />;
 
   const analytics = analyticsData?.data;
-  const summary: { total_events?: number; total_bookings?: number; total_revenue?: string | number } = analytics?.summary || {};
+  const summary: {
+    total_events?: number;
+    total_bookings?: number;
+    total_revenue?: string | number;
+  } = analytics?.summary || {};
   const events = eventsData?.data?.events || [];
-  const pagination: { totalPages?: number } = eventsData?.data?.pagination || {};
+  const pagination: { totalPages?: number } =
+    eventsData?.data?.pagination || {};
   const revenueByEvent: RevenueByEvent[] = analytics?.revenue_by_event || [];
-  const revenueMap = new Map(revenueByEvent.map((r) => [String(r.event_id), r]));
-
+  const revenueMap = new Map(
+    revenueByEvent.map((r) => [String(r.event_id), r])
+  );
 
   return (
     <div className="space-y-6">
@@ -75,7 +85,9 @@ export const ManagerDashboard = () => {
         </CardHeader>
         <CardContent>
           {events.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No events found</p>
+            <p className="text-center text-muted-foreground py-8">
+              No events found
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -92,37 +104,104 @@ export const ManagerDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map((e:any) => {
-                    const rv = revenueMap.get(String(e.id)) as RevenueByEvent | undefined;
-                    const ticketsSold = rv?.total_tickets_sold ?? (e.bookings?.length || 0);
+                  {events.map((e: any) => {
+                    const rv = revenueMap.get(String(e.id)) as
+                      | RevenueByEvent
+                      | undefined;
+                    const ticketsSold =
+                      rv?.total_tickets_sold ??
+                      (e.bookings?.[0]?.quantity || 0);
                     const capacity = rv?.capacity ?? e.capacity ?? 0;
-                    const utilization = rv?.capacity_utilization ?? (capacity ? Math.round((ticketsSold / capacity) * 100) : 0);
+                    const utilization =
+                      rv?.capacity_utilization ??
+                      (capacity
+                        ? Math.round((ticketsSold / capacity) * 100)
+                        : 0);
                     const revenue = rv?.revenue ?? 0;
 
                     return (
                       <tr key={e.id} className="border-b">
-                        <td className="py-2 text-blue-500 underline"> <Link to={`/events/${e.id}`}>{e.title}</Link> </td>
+                        <td className="py-2 text-blue-500 underline">
+                          {" "}
+                          <Link to={`/events/${e.id}`}>{e.title}</Link>{" "}
+                        </td>
                         <td className="py-2 text-sm">{formatDate(e.date)}</td>
                         <td className="py-2 text-sm">{e.location}</td>
                         <td className="py-2 text-right">{ticketsSold}</td>
                         <td className="py-2 text-right">{capacity}</td>
                         <td className="py-2 text-right">{utilization}%</td>
-                        <td className="py-2 text-right font-semibold">{formatCurrency(revenue)}</td>
+                        <td className="py-2 text-right font-semibold">
+                          {formatCurrency(revenue)}
+                        </td>
                         <td className="py-2 text-right">
                           <div className="flex justify-end gap-2">
-                            <Link to={`/events/${e.id}/book`}>
-                              <Button size="sm">Book</Button>
-                            </Link>
-                            {!e.pastEvent && (
-                              <Link to={`/events/${e.id}/edit`}>
-                                <Button size="sm" variant="outline">Edit</Button>
-                              </Link>
-                            )}
-                            {user?.role === UserRole.ADMIN && (
-                              <Button size="sm" variant="destructive" onClick={() => { setSelectedDeleteId(e.id); setDeleteOpen(true); }}>
-                                Delete
-                              </Button>
-                            )}
+                            {/* Book Button */}
+                            {(() => {
+                              const bookedTickets =
+                                e.bookings?.[0]?.quantity || 0;
+                              const remaining = e.capacity - bookedTickets;
+                              const isFull = remaining <= 0;
+
+                              // NO ONE can book past events
+                              const canBook = !e.pastEvent && !isFull;
+
+                              return canBook ? (
+                                <Link to={`/events/${e.id}/book`}>
+                                  <Button size="sm">Book</Button>
+                                </Link>
+                              ) : null;
+                            })()}
+
+                            {/* Edit Button */}
+                            {(() => {
+                              // For Admin: allow all time
+                              // For Event Manager: only their own events AND not past events
+                              const canEdit =
+                                user?.role === UserRole.ADMIN ||
+                                (user?.role === UserRole.EVENT_MANAGER &&
+                                  e.created_by === user?.id &&
+                                  !e.pastEvent);
+
+                              return canEdit ? (
+                                <Link to={`/events/${e.id}/edit`}>
+                                  <Button size="sm" variant="outline">
+                                    Edit
+                                  </Button>
+                                </Link>
+                              ) : null;
+                            })()}
+
+                            {/* Delete Button */}
+                            {(() => {
+                              const bookedTickets =
+                                e.bookings?.[0]?.quantity || 0;
+                              const hasBookings = bookedTickets > 0;
+
+                              // For Admin only:
+                              if (user?.role === UserRole.ADMIN) {
+                                // If event is past: can delete regardless of bookings
+                                // If event is future: can delete only if no bookings
+                                const canDelete = e.pastEvent
+                                  ? true
+                                  : !hasBookings;
+
+                                return canDelete ? (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setSelectedDeleteId(e.id);
+                                      setDeleteOpen(true);
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                ) : null;
+                              }
+
+                              // Event Managers cannot delete events at all
+                              return null;
+                            })()}
                           </div>
                         </td>
                       </tr>

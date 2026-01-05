@@ -25,3 +25,6 @@ dist-ssr
 
 *.tsbuildinfo
 vite.config.d.ts
+
+# Environment Variables 
+*.env

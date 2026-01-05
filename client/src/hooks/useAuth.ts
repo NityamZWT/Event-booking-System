@@ -41,18 +41,18 @@ export const useAuth = () => {
     navigate("/login");
   };
 
-  const changeRole = async (data: LoginCredentials) => {
-    const result = await authAPI.login(data);
-    if (result.data) {
-      dispatch(setCredentials(result.data));
-    }
-    return result;
-  };
+  // const changeRole = async (data: LoginCredentials) => {
+  //   const result = await authAPI.login(data);
+  //   if (result.data) {
+  //     dispatch(setCredentials(result.data));
+  //   }
+  //   return result;
+  // };
 
   return {
     login: (data: LoginCredentials) => loginMutation.mutate(data),
     loginAsync: (data: LoginCredentials) => loginMutation.mutateAsync(data),
-    changeRole,
+    // changeRole,
     register: (data: RegisterData) => registerMutation.mutate(data),
     logout,
     isLoginLoading: loginMutation.isPending,
