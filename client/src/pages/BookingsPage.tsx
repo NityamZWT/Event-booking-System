@@ -209,16 +209,6 @@ export const BookingsPage = () => {
                             Cancel Booking
                           </Button>
                         )}
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          navigate(`/events/${booking.event?.id}`);
-                        }}
-                      >
-                        View Event
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
