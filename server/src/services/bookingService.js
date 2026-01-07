@@ -84,13 +84,13 @@ class BookingService {
             title: createdBooking.event.title,
             date: createdBooking.event.date,
             location: createdBooking.event.location,
-          }
+          },
         };
       }
     );
   }
 
-  async getUserBookings(userId, userRole, page = 1, limit = 10) {
+  async getUserBookings(userId, userRole, eventId, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
 
     const where = {};
@@ -106,6 +106,10 @@ class BookingService {
       where.user_id = userId;
     }
 
+    if (eventId) {
+      where.event_id = eventId;
+    }
+
     const { count, rows } = await Booking.findAndCountAll({
       where,
       limit,
@@ -114,15 +118,17 @@ class BookingService {
       include,
       attributes: [
         "id",
+        "user_id",
         "attendee_name",
         "quantity",
         "booking_amount",
-        "createdAt"
+        "createdAt",
       ],
     });
 
-    const bookings = rows.map(booking => ({
+    const bookings = rows.map((booking) => ({
       id: booking.id,
+      user_id: booking.user_id,
       attendee_name: booking.attendee_name,
       quantity: booking.quantity,
       booking_amount: booking.booking_amount,
@@ -161,7 +167,7 @@ class BookingService {
         "quantity",
         "booking_amount",
         "createdAt",
-        "user_id"
+        "user_id",
       ],
     });
 
@@ -192,15 +198,15 @@ class BookingService {
         title: booking.event.title,
         date: booking.event.date,
         location: booking.event.location,
-      }
+      },
     };
   }
 
   async cancelBooking(bookingId, userId, userRole) {
     return await sequelize.transaction(async (transaction) => {
-      const booking = await Booking.findByPk(bookingId, { 
+      const booking = await Booking.findByPk(bookingId, {
         transaction,
-        attributes: ["id", "user_id", "event_id"]
+        attributes: ["id", "user_id", "event_id"],
       });
 
       if (!booking) {
@@ -214,9 +220,9 @@ class BookingService {
       if (userRole === UserRole.EVENT_MANAGER) {
         const event = await Event.findByPk(booking.event_id, {
           transaction,
-          attributes: ["created_by"]
+          attributes: ["created_by"],
         });
-        
+
         if (!event || event.created_by !== userId) {
           throw new AuthorizationError("Event managers cannot cancel bookings");
         }
@@ -224,7 +230,7 @@ class BookingService {
 
       await Booking.destroy({
         where: { id: bookingId },
-        transaction
+        transaction,
       });
 
       return { message: "Booking cancelled successfully" };

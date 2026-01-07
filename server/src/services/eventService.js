@@ -128,7 +128,6 @@ class EventService {
           const [year, month, day] = filters.date.split("-").map(Number);
           filterDate = new Date(year, month - 1, day, 0, 0, 0, 0);
         } else if (filters.date instanceof Date) {
-          // Already a Date object
           filterDate = new Date(
             filters.date.getFullYear(),
             filters.date.getMonth(),
@@ -162,7 +161,6 @@ class EventService {
       where.title = { [Op.like]: `%${filters.q}%` };
     }
 
-    // Get only essential fields
     const { count, rows } = await Event.findAndCountAll({
       where,
       limit,
@@ -179,7 +177,6 @@ class EventService {
       ],
     });
 
-    // Get booked quantities for all events in one query
     const eventIds = rows.map((event) => event.id);
     const bookings = await Booking.findAll({
       where: { event_id: { [Op.in]: eventIds } },
@@ -191,7 +188,6 @@ class EventService {
       raw: true,
     });
 
-    // Create a map for quick lookup
     const bookedMap = {};
     bookings.forEach((booking) => {
       bookedMap[booking.event_id] = parseInt(booking.total_quantity) || 0;
@@ -199,22 +195,7 @@ class EventService {
 
     const events = rows.map((event) => {
       const bookedTickets = bookedMap[event.id] || 0;
-
-      // Check if event is in the past (date-only comparison)
       const isPastEvent = this.compareDatesOnly(event.date, new Date());
-
-      console.log(`Event ${event.id}:`);
-      console.log(`  Date: ${event.date.toString()}`);
-      console.log(`  Is Past: ${isPastEvent}`);
-
-      let canEdit = false;
-      if (
-        userRole === UserRole.ADMIN ||
-        (userRole === UserRole.EVENT_MANAGER &&
-          event.created_by === (filters.userId || 0))
-      ) {
-        canEdit = true;
-      }
 
       return {
         id: event.id,
@@ -226,7 +207,6 @@ class EventService {
         created_by: event.created_by,
         bookings: [{ quantity: bookedTickets }],
         pastEvent: isPastEvent,
-        _canEdit: canEdit,
       };
     });
 
@@ -242,7 +222,6 @@ class EventService {
   }
 
   async getEventById(eventId, userRole) {
-
     const event = await Event.findByPk(eventId, {
       attributes: [
         "id",
@@ -450,6 +429,43 @@ class EventService {
 
       return { message: "Event deleted successfully" };
     });
+  }
+
+  async getEventsList(processedSearchTerm, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+    let where = {};
+
+    if (processedSearchTerm) {
+      where = {
+        title: {
+          [Op.like]: `%${processedSearchTerm}%`,
+        },
+      };
+    }
+
+    try {
+      const { count, rows } = await Event.findAndCountAll({
+        where,
+        limit: Number(limit),
+        offset: Number(offset),
+        order: [["created_at", "DESC"]],
+        attributes: ["id", "title"],
+      });
+
+      return {
+        events: rows,
+        pagination: {
+          total: count,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages: Math.ceil(count / limit),
+          hasMore: Number(page) < Math.ceil(count / limit),
+        },
+      };
+    } catch (error) {
+      console.error("Database error in getEventsList:", error);
+      throw error;
+    }
   }
 }
 

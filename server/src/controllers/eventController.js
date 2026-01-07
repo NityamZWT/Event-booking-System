@@ -78,7 +78,7 @@ const getEvents = async (req, res, next) => {
     const own_events = validatedQuery.own_events;
 
     const filters = {};
-    if (req.user.role === "EVENT_MANAGER" && own_events === 1) {
+    if (req?.user?.role === "EVENT_MANAGER" && own_events === 1) {
       filters.created_by = req.user.id;
     }
 
@@ -90,13 +90,11 @@ const getEvents = async (req, res, next) => {
       filters.q = validatedQuery.q;
     }
 
-    filters.userId = req.user.id;
-
     const result = await eventService.getEvents(
       page,
       limit,
       filters,
-      req.user.role
+      req?.user?.role
     );
 
     return new SuccessResponse("Events retrieved successfully", result).send(
@@ -110,8 +108,8 @@ const getEvents = async (req, res, next) => {
 const getEventById = async (req, res, next) => {
   try {
     const event = await eventService.getEventById(
-      parseInt(req.params.id),
-      req.user.role
+      parseInt(req?.params?.id),
+      req?.user?.role
     );
 
     return new SuccessResponse("Event retrieved successfully", event).send(res);
@@ -134,10 +132,36 @@ const deleteEvent = async (req, res, next) => {
   }
 };
 
+const searchEvents = async (req, res, next) => {
+  try {
+    const { q, page = 1, limit = 10 } = req.query;
+
+     let processedSearchTerm = '';
+      
+      if (q) {
+        if (typeof q === 'string') {
+          processedSearchTerm = q.trim();
+        } else if (typeof q === 'number') {
+          processedSearchTerm = String(q).trim();
+        } else {
+          console.warn('searchTerm is not a string or number:', q);
+          processedSearchTerm = '';
+        }
+      }
+
+    const result = await eventService.getEventsList(processedSearchTerm, parseInt(page), parseInt(limit));
+
+    return new SuccessResponse('Events retrieved successfully', result).send(res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createEvent,
   getEvents,
   getEventById,
   updateEvent,
   deleteEvent,
+  searchEvents,
 };

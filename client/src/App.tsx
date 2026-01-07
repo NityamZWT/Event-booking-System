@@ -34,19 +34,12 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-
-            <Route
-              path="/"
-              element={
-                <PrivateRoute>
-                  <Layout />
-                </PrivateRoute>
-              }
-            >
-              <Route index element={<Navigate to="/events" replace />} />
+            <Route path="/" element={<Layout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="events/:id" element={<EventDetailPage />} />
               <Route path="events" element={<EventsPage />} />
+              <Route index element={<Navigate to="/events" replace />} />
               <Route
                 path="events/create"
                 element={
@@ -67,10 +60,22 @@ function App() {
                   </PrivateRoute>
                 }
               />
-              <Route path="events/:id" element={<EventDetailPage />} />
-              <Route path="events/:id/book" element={<BookEventPage />} />
-              <Route path="bookings" element={<BookingsPage />} />
-              {/* Analytics page removed — dashboard shows analytics for admin/manager */}
+              <Route
+                path="events/:id/book"
+                element={
+                  <PrivateRoute>
+                    <BookEventPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="bookings"
+                element={
+                  <PrivateRoute>
+                    <BookingsPage />
+                  </PrivateRoute>
+                }
+              />
               <Route
                 path="admin/users"
                 element={

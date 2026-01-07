@@ -49,4 +49,11 @@ export const eventsAPI = {
     const response = await axios.delete<ApiResponse<null>>(`/events/${id}`);
     return response.data;
   },
+
+  getEventList: async (query: string, page: number = 1, limit: number = 10) => {
+    const response = await axios.get('/events/list', {
+      params: { q: query, page, limit }
+    });
+    return response.data;
+  },
 };

@@ -19,10 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import {
-  formatDate,
-  formatCurrency
-} from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 import { Event, Pagination, UserRole } from "@/types";
 
 export const EventsPage = () => {
@@ -32,12 +29,12 @@ export const EventsPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [deleteEventId, setDeleteEventId] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   // Ref for search input focus
   const searchInputRef = useRef<HTMLInputElement>(null);
   // Throttle timer ref
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const { user } = useAppSelector((state) => state.auth);
 
   const { data, isLoading, error, refetch } = useEvents({
@@ -51,34 +48,37 @@ export const EventsPage = () => {
   const deleteEvent = useDeleteEvent();
 
   // Throttle function for search
-  const throttleSearch = useCallback((searchTerm: string) => {
-    // Clear any existing timer
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-    
-    // Show searching state
-    setIsSearching(true);
-    
-    // Set new timer for 300ms delay
-    searchTimerRef.current = setTimeout(async () => {
-      setQ(searchTerm);
-      setPage(1); // Reset to first page on search
-      
-      // Refetch data without full page reload
-      try {
-        await refetch();
-      } finally {
-        setIsSearching(false);
+  const throttleSearch = useCallback(
+    (searchTerm: string) => {
+      // Clear any existing timer
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
       }
-    }, 300);
-  }, [refetch]);
+
+      // Show searching state
+      setIsSearching(true);
+
+      // Set new timer for 300ms delay
+      searchTimerRef.current = setTimeout(async () => {
+        setQ(searchTerm);
+        setPage(1); // Reset to first page on search
+
+        // Refetch data without full page reload
+        try {
+          await refetch();
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300);
+    },
+    [refetch]
+  );
 
   // Handle search input change with throttle
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
-    
+
     // If input is cleared, search immediately
     if (value === "") {
       if (searchTimerRef.current) {
@@ -90,7 +90,7 @@ export const EventsPage = () => {
       refetch(); // Refetch immediately when cleared
       return;
     }
-    
+
     throttleSearch(value);
   };
 
@@ -103,7 +103,7 @@ export const EventsPage = () => {
       setQ(searchInput);
       setPage(1);
       setIsSearching(true);
-      
+
       try {
         await refetch();
       } finally {
@@ -120,12 +120,12 @@ export const EventsPage = () => {
     if (searchTimerRef.current) {
       clearTimeout(searchTimerRef.current);
     }
-    
+
     // Clear search input and focus on it
     if (searchInputRef.current) {
       searchInputRef.current.focus();
     }
-    
+
     setIsSearching(true);
     try {
       await refetch();
@@ -282,7 +282,9 @@ export const EventsPage = () => {
         {/* Active Filters Display */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
+            <span className="text-sm text-muted-foreground">
+              Active filters:
+            </span>
             {q && (
               <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
                 Search: "{q}"
@@ -320,7 +322,6 @@ export const EventsPage = () => {
         )}
       </div>
 
-      {/* Events List - Shows loading only for this section */}
       <div className="grid gap-4 relative min-h-[200px]">
         {isSearching ? (
           <div className="absolute inset-0 flex items-start justify-center bg-background/50 backdrop-blur-sm z-10">
@@ -330,7 +331,7 @@ export const EventsPage = () => {
             </div>
           </div>
         ) : null}
-        
+
         {events.length === 0 ? (
           <div className="text-center py-12 space-y-4">
             <p className="text-muted-foreground text-lg">
@@ -350,107 +351,131 @@ export const EventsPage = () => {
             )}
           </div>
         ) : (
-          events.map((event: Event) => (
-            <Card
-              key={event.id}
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest("button, a")) {
-                  return;
-                }
-                navigate(`/events/${event.id}`);
-              }}
-            >
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center">
-                  <div className="flex-1">
-                    <div className="flex gap-1">
-                      <h3 className="text-xl font-semibold mb-2">
-                        {event.title}
-                      </h3>
-                      {event.pastEvent === true ? (
-                        <Badge variant="destructive" className="text-xs">
-                      Past Event
-                    </Badge>
-                      ) : null}
+          events.map((event: Event) => {
+            const bookedTickets =
+              event.bookings?.reduce(
+                (sum: number, booking: any) => sum + (booking.quantity || 0),
+                0
+              ) || 0;
+            const remaining = event.capacity - bookedTickets;
+            return (
+              <Card
+                key={event.id}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest("button, a")) {
+                    return;
+                  }
+                  navigate(`/events/${event.id}`);
+                }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-semibold mb-2">
+                          {event.title}
+                        </h3>
+                        {event.pastEvent === true ? (
+                          <Badge variant="destructive" className="text-xs">
+                            Past Event
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <p>Date: {formatDate(event.date)}</p>
+                        <p>
+                          Location: <b>{event.location}</b>
+                        </p>
+                        <p>
+                          Price: <b>{formatCurrency(event.ticket_price)}</b>
+                        </p>
+                        <p>
+                          Remaining: <b>{remaining}</b> tickets
+                        </p>
+                      </div>
                     </div>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>Date: {formatDate(event.date)}</p>
-                      <p>Location: {event.location}</p>
-                      <p>Price: {formatCurrency(event.ticket_price)}</p>
-                    </div>
-                  </div>
-                  <div
-                    className="flex gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {(() => {
-                      const bookedTickets = event.bookings?.reduce(
-                        (sum: number, booking: any) => sum + (booking.quantity || 0),
-                        0
-                      ) || 0;
-                      const remaining = event.capacity - bookedTickets;
-                      const isFull = remaining <= 0;
-                      
-                      if (event.pastEvent) {
-                        return null;
-                      }
+                    <div
+                      className="flex gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {(() => {
+                        const isFull = remaining <= 0;
 
-                      if (isFull) return <Button type="button" variant='ghost' disabled={true}>Full</Button>
-                      
-                      return (
-                        <Link to={`/events/${event.id}/book`}>
-                          <Button size="sm">Book</Button>
-                        </Link>
-                      );
-                    })()}
+                        if (event.pastEvent) {
+                          return null;
+                        }
 
-                    {(() => {
-                      const canEdit = 
-                        user?.role === UserRole.ADMIN || 
-                        (user?.role === UserRole.EVENT_MANAGER && 
-                         event.created_by === user?.id && 
-                         !event.pastEvent);
-                      
-                      return canEdit ? (
-                        <Link to={`/events/${event.id}/edit`}>
-                          <Button size="sm" variant="outline">Edit</Button>
-                        </Link>
-                      ) : null;
-                    })()}
+                        if (isFull)
+                          return (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={true}
+                            >
+                              Full
+                            </Button>
+                          );
 
-                    {/* Delete Button with all rules */}
-                    {(() => {
-                      const bookedTickets = event.bookings?.reduce(
-                        (sum: number, booking: any) => sum + (booking.quantity || 0),
-                        0
-                      ) || 0;
-                      const hasBookings = bookedTickets > 0;
-                      
-                      if (user?.role === UserRole.ADMIN) {
-                        const canDelete = event.pastEvent ? true : !hasBookings;
-                        
-                        return canDelete ? (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteEventId(event.id);
-                            }}
-                          >
-                            Delete
-                          </Button>
+                        return (
+                          <Link to={`/events/${event.id}/book`}>
+                            <Button size="sm">Book</Button>
+                          </Link>
+                        );
+                      })()}
+
+                      {(() => {
+                        const canEdit =
+                          !event.pastEvent &&
+                          (user?.role === UserRole.ADMIN ||
+                            (user?.role === UserRole.EVENT_MANAGER &&
+                              event.created_by === user?.id));
+
+                        return canEdit ? (
+                          <Link to={`/events/${event.id}/edit`}>
+                            <Button size="sm" variant="outline">
+                              Edit
+                            </Button>
+                          </Link>
                         ) : null;
-                      }
-                      
-                      return null;
-                    })()}
+                      })()}
+
+                      {(() => {
+                        const bookedTickets =
+                          event.bookings?.reduce(
+                            (sum: number, booking: any) =>
+                              sum + (booking.quantity || 0),
+                            0
+                          ) || 0;
+                        const hasBookings = bookedTickets > 0;
+
+                        if (user?.role === UserRole.ADMIN) {
+                          const canDelete = event.pastEvent
+                            ? false
+                            : !hasBookings;
+
+                          return canDelete ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteEventId(event.id);
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          ) : null;
+                        }
+
+                        return null;
+                      })()}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 

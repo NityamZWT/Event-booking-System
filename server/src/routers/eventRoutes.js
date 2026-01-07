@@ -13,6 +13,7 @@ router.post(
 );
 
 router.get("/", authenticate, eventController.getEvents);
+router.get('/list', eventController.searchEvents);
 
 router.get("/:id", authenticate, eventController.getEventById);
 
@@ -22,6 +23,7 @@ router.put(
   authorize(UserRole.ADMIN, UserRole.EVENT_MANAGER),
   eventController.updateEvent
 );
+
 
 router.delete(
   "/:id",

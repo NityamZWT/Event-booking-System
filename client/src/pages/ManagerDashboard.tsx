@@ -135,14 +135,11 @@ export const ManagerDashboard = () => {
                         </td>
                         <td className="py-2 text-right">
                           <div className="flex justify-end gap-2">
-                            {/* Book Button */}
                             {(() => {
                               const bookedTickets =
                                 e.bookings?.[0]?.quantity || 0;
                               const remaining = e.capacity - bookedTickets;
                               const isFull = remaining <= 0;
-
-                              // NO ONE can book past events
                               const canBook = !e.pastEvent && !isFull;
 
                               return canBook ? (
@@ -152,12 +149,9 @@ export const ManagerDashboard = () => {
                               ) : null;
                             })()}
 
-                            {/* Edit Button */}
                             {(() => {
-                              // For Admin: allow all time
-                              // For Event Manager: only their own events AND not past events
                               const canEdit =
-                                user?.role === UserRole.ADMIN ||
+                                (user?.role === UserRole.ADMIN && !e.pastEvent)||
                                 (user?.role === UserRole.EVENT_MANAGER &&
                                   e.created_by === user?.id &&
                                   !e.pastEvent);
@@ -171,16 +165,12 @@ export const ManagerDashboard = () => {
                               ) : null;
                             })()}
 
-                            {/* Delete Button */}
                             {(() => {
                               const bookedTickets =
                                 e.bookings?.[0]?.quantity || 0;
                               const hasBookings = bookedTickets > 0;
 
-                              // For Admin only:
-                              if (user?.role === UserRole.ADMIN) {
-                                // If event is past: can delete regardless of bookings
-                                // If event is future: can delete only if no bookings
+                              if (user?.role === UserRole.ADMIN  && !e.pastEvent) {
                                 const canDelete = e.pastEvent
                                   ? true
                                   : !hasBookings;
@@ -198,8 +188,6 @@ export const ManagerDashboard = () => {
                                   </Button>
                                 ) : null;
                               }
-
-                              // Event Managers cannot delete events at all
                               return null;
                             })()}
                           </div>

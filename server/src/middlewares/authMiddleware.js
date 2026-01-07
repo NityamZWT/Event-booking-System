@@ -3,20 +3,24 @@ const { AuthenticationError, AuthorizationError } = require("../utils/errors");
 
 const authenticate = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const authHeader = req.headers.authorization || null;
+    const allowedRoutes = ["/api/events", "/api/events/"];
+    console.log((!allowedRoutes.includes(req.baseUrl)) && req.method !== "GET");
+    
+    if (((!authHeader || !authHeader.startsWith("Bearer ")) && (!allowedRoutes.includes(req.baseUrl)) && req.method !== "GET")) {
       throw new AuthenticationError("No token provided");
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded = verifyToken(token);
-
-    req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-    };
+    if ((!allowedRoutes.includes(req.baseUrl)) && req.method !== "GET") {
+      const token = authHeader.split(" ")[1];
+      const decoded = verifyToken(token);
+  
+      req.user = {
+        id: decoded.id,
+        email: decoded.email,
+        role: decoded.role,
+      };
+    }
 
     next();
   } catch (error) {
@@ -47,6 +51,7 @@ const authorize = (...allowedRoles) => {
     next();
   };
 };
+
 
 module.exports = {
   authenticate,

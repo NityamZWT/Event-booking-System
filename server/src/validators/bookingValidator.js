@@ -39,6 +39,11 @@ const getUserBookingsSchema = yup.object({
     .max(100)
     .default(10)
     .transform((value, originalValue) => (originalValue === undefined ? undefined : Number(originalValue))),
+    eventId: yup
+    .number()
+    .integer('Event ID must be an integer')
+    .positive('Event ID must be positive')
+    .optional()
 });
 
 module.exports = {

@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { Formik, Form, Field } from "formik";
-import { useState } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useCreateEvent } from "@/hooks/useEvents";
@@ -23,7 +22,6 @@ export const CreateEventPage = () => {
 
   const handleSubmit = async (values: any) => {
     try {
-      // Format the date as YYYY-MM-DD string
       const formattedValues = {
         ...values,
         date: values.date ? format(values.date, "yyyy-MM-dd") : "",

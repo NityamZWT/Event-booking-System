@@ -6,6 +6,7 @@ import { QUERY_KEYS } from "@/lib/constants";
 interface UseBookingsParams {
   page?: number;
   limit?: number;
+  eventId?: number | null;
 }
 
 export const useBookings = (params: UseBookingsParams = {}) => {
@@ -48,3 +49,11 @@ export const useCancelBooking = () => {
     },
   });
 };
+
+export const useBookingsByEventId = (eventId: number | null) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.BOOKINGS, { eventId }],
+    queryFn: () => bookingsAPI.getBookingsByEventId(eventId!),
+    enabled: !!eventId,
+  });
+}
