@@ -15,6 +15,26 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(1000),
         allowNull: true
       },
+      images: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: '[]',
+        get() {
+          const rawValue = this.getDataValue('images');
+          try {
+            return rawValue ? JSON.parse(rawValue) : [];
+          } catch {
+            return [];
+          }
+        },
+        set(value) {
+          if (Array.isArray(value)) {
+            this.setDataValue('images', JSON.stringify(value));
+          } else {
+            this.setDataValue('images', '[]');
+          }
+        }
+      },
       date: {
         type: DataTypes.DATE,
         allowNull: false

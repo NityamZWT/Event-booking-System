@@ -3,39 +3,55 @@ const yup = require("yup");
 const createEventSchema = yup.object({
   title: yup.string().required("Title is required"),
   description: yup.string(),
-  date: yup.string()
-    .required('Event date is required')
-    .test('is-valid-date', 'Invalid date format', (value) => {
+  images: yup
+    .array()
+    .of(
+      yup.object({
+        url: yup.string().url("Each image must be a valid URL").required(),
+        public_id: yup.string().required(),
+      })
+    )
+    .optional(),
+  date: yup
+    .string()
+    .required("Event date is required")
+    .test("is-valid-date", "Invalid date format", (value) => {
       if (!value) return false;
       const date = new Date(value);
       return !isNaN(date.getTime());
     })
-    .test('is-future-or-today', 'Event date must be today or in the future', (value) => {
-      if (!value) return false;
-      
-      const selectedDate = new Date(value);
-      const today = new Date();
-      
-      // Compare only dates
-      const selectedDateOnly = new Date(
-        selectedDate.getFullYear(),
-        selectedDate.getMonth(),
-        selectedDate.getDate()
-      );
-      
-      const todayOnly = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
-      
-      return selectedDateOnly >= todayOnly;
-    }),
+    .test(
+      "is-future-or-today",
+      "Event date must be today or in the future",
+      (value) => {
+        if (!value) return false;
+
+        const selectedDate = new Date(value);
+        const today = new Date();
+
+        // Compare only dates
+        const selectedDateOnly = new Date(
+          selectedDate.getFullYear(),
+          selectedDate.getMonth(),
+          selectedDate.getDate()
+        );
+
+        const todayOnly = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
+
+        return selectedDateOnly >= todayOnly;
+      }
+    ),
   location: yup.string().required("Location is required"),
-  ticket_price: yup.number()
+  ticket_price: yup
+    .number()
     .required("Ticket price is required")
     .min(0, "Ticket price must be at least 0"),
-  capacity: yup.number()
+  capacity: yup
+    .number()
     .required("Capacity is required")
     .min(1, "Capacity must be at least 1")
     .integer("Capacity must be a whole number"),
@@ -47,7 +63,8 @@ const updateEventSchema = yup.object({
     .trim()
     .min(3, "Title must be at least 3 characters")
     .max(200, "Title cannot exceed 200 characters"),
-  date: yup.date()
+  date: yup
+    .date()
     .test(
       "is-future-or-today",
       "Event date must be today or in the future",
@@ -57,7 +74,6 @@ const updateEventSchema = yup.object({
         const selectedDate = new Date(value);
         const today = new Date();
 
-        // Compare only dates
         const selectedDateOnly = new Date(
           selectedDate.getFullYear(),
           selectedDate.getMonth(),
@@ -90,6 +106,20 @@ const updateEventSchema = yup.object({
     .number()
     .integer("Capacity must be an integer")
     .min(1, "Capacity must be at least 1"),
+  images: yup
+    .array()
+    .of(
+      yup.object({
+        url: yup.string().url("Each image must be a valid URL").required(),
+        public_id: yup.string().required(),
+      })
+    )
+    .optional(),
+  retain_images: yup
+    .array()
+    .of(yup.string())
+    .optional()
+    .nullable(),
 });
 
 const getEventsSchema = yup

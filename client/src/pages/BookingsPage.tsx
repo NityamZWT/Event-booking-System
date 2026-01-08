@@ -1,36 +1,72 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/store/hook";
 import { useBookings, useCancelBooking } from "@/hooks/useBooking";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { UserRole, Booking } from "@/types";
-import { Calendar, MapPin, Users, DollarSign, Clock, User } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  Users,
+  DollarSign,
+  Clock,
+  User,
+  X,
+} from "lucide-react";
+import { EventSearchCombobox } from "@/components/common/searchEvent";
 
 export const BookingsPage = () => {
   const [page, setPage] = useState(1);
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [cancelBookingTitle, setCancelBookingTitle] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEvent, setSelectedEvent] = useState<string>("all");
+  const [selectedEventName, setSelectedEventName] = useState<string>("");
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
-  const { data, isLoading, error, refetch } = useBookings({ page, limit: 10 });
+  const { data, isLoading, error, refetch } = useBookings({
+    page,
+    limit: 10,
+    eventId: selectedEvent !== "all" ? parseInt(selectedEvent) : undefined,
+  });
   const cancelBooking = useCancelBooking();
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [dialogEventId, setDialogEventId] = useState<number | null>(null);
+  const [dialogEventTitle, setDialogEventTitle] = useState<string>("");
+
+  const handleEventSelect = (event: any) => {
+    if (event) {
+      setSelectedEvent(event.id.toString());
+      setSelectedEventName(event.title);
+    } else {
+      setSelectedEvent("all");
+      setSelectedEventName("");
+    }
+  };
 
   const handleCancelClick = (bookingId: number, eventTitle: string) => {
     setCancelId(bookingId);
     setCancelBookingTitle(eventTitle);
   };
 
+  const openEventDialog = (e: any, id?: number, title?: string) => {
+    e.stopPropagation();
+    setDialogEventId(id ?? null);
+    setDialogEventTitle(title ?? "");
+    setEventDialogOpen(true);
+  };
+
   const handleCancel = async () => {
     if (cancelId) {
       try {
         await cancelBooking.mutateAsync(cancelId);
-        await refetch(); // Refresh the list after cancellation
+        await refetch();
         setCancelId(null);
         setCancelBookingTitle("");
       } catch {
@@ -40,10 +76,34 @@ export const BookingsPage = () => {
     }
   };
 
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedEvent("all");
+    setSelectedEventName("");
+  };
+
+  const filteredBookings = useMemo(() => {
+    if (!data?.data?.bookings) return [];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return data.data.bookings.filter(
+        (booking: Booking) =>
+          booking.attendee_name.toLowerCase().includes(q) ||
+          booking.event?.title.toLowerCase().includes(q) ||
+          booking.event?.location.toLowerCase().includes(q)
+      );
+    }
+
+    return data.data.bookings;
+  }, [data?.data?.bookings, searchQuery]);
+
+  const hasActiveFilters = selectedEvent !== "all" || searchQuery.trim() !== "";
+
   if (isLoading) return <LoadingSpinner />;
   if (error) return <div>Error loading bookings</div>;
 
-  const bookings = data?.data?.bookings || [];
+  const bookings = filteredBookings;
   const pagination: { totalPages?: number } = data?.data?.pagination || {};
 
   return (
@@ -59,24 +119,106 @@ export const BookingsPage = () => {
         </p>
       </div>
 
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="w-full">
+            <EventSearchCombobox
+              value={selectedEvent !== "all" ? selectedEvent : undefined}
+              onSelect={handleEventSelect}
+              placeholder="Select an event to filter..."
+              searchPlaceholder="Search events by name..."
+              emptyMessage="No events found. Try a different search."
+              showSelectedInTrigger={true}
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={clearFilters}
+              className="whitespace-nowrap"
+            >
+              Clear All Filters
+            </Button>
+
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-sm text-muted-foreground">
+                Active filters:
+              </span>
+              {selectedEvent !== "all" && (
+                <Badge variant="secondary" className="gap-1">
+                  Event: {selectedEventName}
+                  <button
+                    onClick={() => {
+                      setSelectedEvent("all");
+                      setSelectedEventName("");
+                    }}
+                    className="ml-1 hover:bg-accent rounded-full p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {searchQuery && (
+                <Badge variant="secondary" className="gap-1">
+                  Search: "{searchQuery}"
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="ml-1 hover:bg-accent rounded-full p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="text-sm text-muted-foreground">
+          Showing {bookings.length} of {data?.data?.pagination.total || 0}{" "}
+          booking{bookings.length !== 1 ? "s" : ""}
+          {hasActiveFilters && " (filtered)"}
+        </div>
+      </div>
+
       <div className="grid gap-4">
         {bookings.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Users className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-lg text-muted-foreground">No bookings found</p>
+              <p className="text-lg text-muted-foreground">
+                {hasActiveFilters
+                  ? "No matching bookings found"
+                  : "No bookings found"}
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
-                {user?.role === UserRole.ADMIN
+                {hasActiveFilters
+                  ? "Try adjusting your filters"
+                  : user?.role === UserRole.ADMIN
                   ? "There are no bookings in the system yet"
                   : "You haven't booked any events yet"}
               </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => navigate("/events")}
-              >
-                Browse Events
-              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={clearFilters}
+                >
+                  Clear Filters
+                </Button>
+              )}
+              {!hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => navigate("/events")}
+                >
+                  Browse Events
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -86,10 +228,7 @@ export const BookingsPage = () => {
             return (
               <Card
                 key={booking.id}
-                className="cursor-pointer hover:bg-muted/50 transition-colors group"
-                onClick={() =>
-                  booking.event?.id && navigate(`/events/${booking.event.id}`)
-                }
+                className="hover:bg-muted/50 transition-colors group"
               >
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -98,7 +237,13 @@ export const BookingsPage = () => {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-semibold group-hover:text-primary transition-colors">
+                            <h3
+                              className="cursor-pointer text-xl font-semibold group-hover:text-primary transition-colors text-decoration: underline"
+                              onClick={() =>
+                                booking.event?.id &&
+                                navigate(`/events/${booking.event.id}`)
+                              }
+                            >
                               {booking.event?.title}
                             </h3>
                             {isPastEvent && (
@@ -129,7 +274,17 @@ export const BookingsPage = () => {
                               <p className="text-sm text-muted-foreground">
                                 Attendee
                               </p>
-                              <p className="font-medium">
+                              <p
+                                className="cursor-pointer  font-medium text-decoration: underline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (booking.user_id) {
+                                    navigate(`/admin/users/${booking.user_id}`);
+                                  } else {
+                                    navigate(`/users/${booking.user_id}`);
+                                  }
+                                }}
+                              >
                                 {booking.attendee_name}
                               </p>
                             </div>
@@ -184,12 +339,10 @@ export const BookingsPage = () => {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div
                       className="flex items-start gap-2 pt-2 md:pt-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* Cancel Button - Only if event is not past */}
                       {(user?.role === UserRole.ADMIN ||
                         user?.role === UserRole.CUSTOMER) &&
                         !isPastEvent && (
@@ -218,12 +371,8 @@ export const BookingsPage = () => {
         )}
       </div>
 
-      {/* Pagination */}
       {(pagination.totalPages ?? 0) > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-          <p className="text-sm text-muted-foreground">
-            Showing {bookings.length} booking{bookings.length !== 1 ? "s" : ""}
-          </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -246,7 +395,6 @@ export const BookingsPage = () => {
         </div>
       )}
 
-      {/* Cancel Confirmation Dialog */}
       <ConfirmDialog
         open={cancelId !== null}
         onOpenChange={(open) => !open && setCancelId(null)}

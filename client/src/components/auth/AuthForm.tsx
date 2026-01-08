@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { UserRole } from "@/types";
 import * as Yup from "yup";
+import { USER_ROLES } from "@/lib/constants";
 
 interface AuthFormValues {
   first_name?: string;
@@ -118,9 +119,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={UserRole.CUSTOMER}>Customer</SelectItem>
-                  <SelectItem value={UserRole.EVENT_MANAGER}>Event Manager</SelectItem>
-                  <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                  {(Object.values(USER_ROLES) as UserRole[]).map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Field>
               {errors.role && touched.role && (

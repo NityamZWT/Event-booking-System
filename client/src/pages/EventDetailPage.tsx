@@ -30,13 +30,14 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Booking, UserRole } from "@/types";
 import { bookingSchema } from "@/validators/bookingValidators";
 import { Calendar, MapPin, Users, DollarSign, User, Clock } from "lucide-react";
+import { EventImageGallery } from "@/components/events/EventImageGallery";
 
 export const EventDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data, isLoading, error } = useEvent(id ? parseInt(id) : null);
   const createBooking = useCreateBooking();
-  const { user } = useAppSelector((s) => s.auth);
+  const { user, isAuthenticated } = useAppSelector((s) => s.auth);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteEvent = useDeleteEvent();
 
@@ -47,7 +48,6 @@ export const EventDetailPage = () => {
 
   const canViewBookings = user?.role === UserRole.ADMIN;
 
-  // Check if user can manage this event (edit/delete)
   const canManageEvent =
     user?.role === UserRole.ADMIN ||
     (user?.role === UserRole.EVENT_MANAGER && user?.id === event?.creator?.id);
@@ -61,10 +61,10 @@ export const EventDetailPage = () => {
   const isFull = remaining <= 0;
   const isPastEvent = event?.pastEvent;
 
-  // Delete permission rules (same as EventsPage)
+
   const hasBookings = bookedTickets > 0;
   const canDeleteEvent =
-    user?.role === UserRole.ADMIN && (isPastEvent ? true : !hasBookings); // Admin can delete past events always, future only if no bookings
+    user?.role === UserRole.ADMIN && (isPastEvent ? false : !hasBookings); 
 
   const handleConfirmDelete = async () => {
     try {
@@ -121,7 +121,9 @@ export const EventDetailPage = () => {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Event Description */}
+             {event?.images && event.images.length > 0 && (
+              <EventImageGallery images={event.images} />
+            )}
             { event?.description && <div>
               <h3 className="text-lg font-semibold mb-2">Description</h3>
               <p className="text-muted-foreground leading-relaxed">
@@ -131,7 +133,6 @@ export const EventDetailPage = () => {
 
             <Separator />
 
-            {/* Event Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
@@ -195,181 +196,192 @@ export const EventDetailPage = () => {
 
             <Separator />
 
-            {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 pt-2">
-              {/* Book Button */}
               {!isPastEvent && !isFull && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="lg" className="min-w-[140px]">
-                      Book Now
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent
-                    onOpenAutoFocus={(e: any) => {
-                      e.preventDefault();
-                      const title = e.currentTarget.querySelector("h2");
-                      if (title) {
-                        title.setAttribute("tabindex", "-1");
-                        title.focus();
-                      }
-                    }}
-                    className="sm:max-w-[425px]"
-                  >
-                    <DialogHeader>
-                      <DialogTitle tabIndex={-1}>Book Tickets</DialogTitle>
-                      <DialogDescription>
-                        Fill in the details below to book tickets for "
-                        {event?.title}"
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <Formik
-                      initialValues={{ attendee_name: "", quantity: 1 }}
-                      validationSchema={bookingSchema}
-                      onSubmit={async (values) => {
-                        try {
-                          await createBooking.mutateAsync({
-                            event_id: parseInt(id!),
-                            attendee_name: values.attendee_name,
-                            quantity: values.quantity,
-                            booking_amount:
-                              Number(event?.ticket_price ?? 0) *
-                              values.quantity,
-                          });
-                          navigate("/bookings");
-                        } catch {
-                          return;
+                isAuthenticated ? (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="lg" className="min-w-35">
+                        Book Now
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent
+                      onOpenAutoFocus={(e: any) => {
+                        e.preventDefault();
+                        const title = e.currentTarget.querySelector("h2");
+                        if (title) {
+                          title.setAttribute("tabindex", "-1");
+                          title.focus();
                         }
                       }}
+                      className="sm:max-w-106.25"
                     >
-                      {({
-                        errors,
-                        touched,
-                        values,
-                        setFieldValue,
-                        isSubmitting,
-                      }) => (
-                        <Form className="space-y-5">
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="attendee_name"
-                              className="text-sm font-medium"
-                            >
-                              Attendee Name *
-                            </Label>
-                            <Field
-                              name="attendee_name"
-                              as={Input}
-                              placeholder="Enter full name"
-                            />
-                            {errors.attendee_name && touched.attendee_name && (
-                              <p className="text-sm text-destructive mt-1">
-                                {errors.attendee_name}
-                              </p>
-                            )}
-                          </div>
+                      <DialogHeader>
+                        <DialogTitle tabIndex={-1}>Book Tickets</DialogTitle>
+                        <DialogDescription>
+                          Fill in the details below to book tickets for "
+                          {event?.title}"
+                        </DialogDescription>
+                      </DialogHeader>
 
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="quantity"
-                              className="text-sm font-medium"
-                            >
-                              Number of Tickets *
-                            </Label>
-                            <Field
-                              name="quantity"
-                              type="number"
-                              min="1"
-                              max={remaining}
-                              step="1"
-                              as={Input}
-                              placeholder="Enter quantity"
-                              onChange={handleQuantityOnchange(
-                                setFieldValue,
-                                "quantity"
+                      <Formik
+                        initialValues={{ attendee_name: "", quantity: 1 }}
+                        validationSchema={bookingSchema}
+                        onSubmit={async (values) => {
+                          try {
+                            await createBooking.mutateAsync({
+                              event_id: parseInt(id!),
+                              attendee_name: values.attendee_name,
+                              quantity: values.quantity,
+                              booking_amount:
+                                Number(event?.ticket_price ?? 0) *
+                                values.quantity,
+                            });
+                            navigate("/bookings");
+                          } catch {
+                            return;
+                          }
+                        }}
+                      >
+                        {({
+                          errors,
+                          touched,
+                          values,
+                          setFieldValue,
+                          isSubmitting,
+                        }) => (
+                          <Form className="space-y-5">
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor="attendee_name"
+                                className="text-sm font-medium"
+                              >
+                                Attendee Name *
+                              </Label>
+                              <Field
+                                name="attendee_name"
+                                as={Input}
+                                placeholder="Enter full name"
+                              />
+                              {errors.attendee_name && touched.attendee_name && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {errors.attendee_name}
+                                </p>
                               )}
-                              onKeyDown={(e: any) => {
-                                if (
-                                  [".", ",", "-", "e", "E", "+"].includes(e.key)
-                                ) {
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor="quantity"
+                                className="text-sm font-medium"
+                              >
+                                Number of Tickets *
+                              </Label>
+                              <Field
+                                name="quantity"
+                                type="number"
+                                min="1"
+                                max={remaining}
+                                step="1"
+                                as={Input}
+                                placeholder="Enter quantity"
+                                onChange={handleQuantityOnchange(
+                                  setFieldValue,
+                                  "quantity"
+                                )}
+                                onKeyDown={(e: any) => {
+                                  if (
+                                    [".", ",", "-", "e", "E", "+"].includes(
+                                      e.key
+                                    )
+                                  ) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Maximum {remaining} tickets available
+                              </p>
+                              {errors.quantity && touched.quantity && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {errors.quantity}
+                                </p>
+                              )}
+                            </div>
+
+                            <Card className="bg-muted/50">
+                              <CardContent className="pt-4">
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                      Price per ticket:
+                                    </span>
+                                    <span>
+                                      {formatCurrency(
+                                        event?.ticket_price ?? 0
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                      Quantity:
+                                    </span>
+                                    <span>{values.quantity || 0}</span>
+                                  </div>
+                                  <Separator />
+                                  <div className="flex justify-between font-semibold text-base">
+                                    <span>Total Amount:</span>
+                                    <span className="text-primary">
+                                      {formatCurrency(
+                                        (event?.ticket_price ?? 0) *
+                                          (values.quantity || 0)
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <div className="flex gap-2 justify-end pt-2">
+                              <Button
+                                variant="outline"
+                                type="button"
+                                onClick={(e) => {
                                   e.preventDefault();
-                                }
-                              }}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Maximum {remaining} tickets available
-                            </p>
-                            {errors.quantity && touched.quantity && (
-                              <p className="text-sm text-destructive mt-1">
-                                {errors.quantity}
-                              </p>
-                            )}
-                          </div>
+                                  navigate("/events");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="submit"
+                                disabled={isSubmitting || createBooking.isPending}
+                              >
+                                {isSubmitting || createBooking.isPending ? (
+                                  <>
+                                    <span className="mr-2">Processing...</span>
+                                  </>
+                                ) : (
+                                  "Confirm Booking"
+                                )}
+                              </Button>
+                            </div>
+                          </Form>
+                        )}
+                      </Formik>
 
-                          {/* Price Summary */}
-                          <Card className="bg-muted/50">
-                            <CardContent className="pt-4">
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">
-                                    Price per ticket:
-                                  </span>
-                                  <span>
-                                    {formatCurrency(event?.ticket_price ?? 0)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">
-                                    Quantity:
-                                  </span>
-                                  <span>{values.quantity || 0}</span>
-                                </div>
-                                <Separator />
-                                <div className="flex justify-between font-semibold text-base">
-                                  <span>Total Amount:</span>
-                                  <span className="text-primary">
-                                    {formatCurrency(
-                                      (event?.ticket_price ?? 0) *
-                                        (values.quantity || 0)
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <div className="flex gap-2 justify-end pt-2">
-                            <Button
-                              variant="outline"
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                navigate("/events");
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="submit"
-                              disabled={isSubmitting || createBooking.isPending}
-                            >
-                              {isSubmitting || createBooking.isPending ? (
-                                <>
-                                  <span className="mr-2">Processing...</span>
-                                </>
-                              ) : (
-                                "Confirm Booking"
-                              )}
-                            </Button>
-                          </div>
-                        </Form>
-                      )}
-                    </Formik>
-
-                    <DialogFooter />
-                  </DialogContent>
-                </Dialog>
+                      <DialogFooter />
+                    </DialogContent>
+                  </Dialog>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="min-w-35"
+                    onClick={() => navigate("/login")}
+                  >
+                    Book Now
+                  </Button>
+                )
               )}
 
               {/* Event Full Message */}
@@ -394,7 +406,6 @@ export const EventDetailPage = () => {
                 </div>
               )}
 
-              {/* Delete Button (Conditional) */}
               {canDeleteEvent && (
                 <Button
                   variant="destructive"
@@ -408,7 +419,6 @@ export const EventDetailPage = () => {
           </CardContent>
         </Card>
 
-        {/* Bookings Section (Admin only) */}
         {canViewBookings && (
           <Card>
             <CardHeader>
@@ -467,7 +477,6 @@ export const EventDetailPage = () => {
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}

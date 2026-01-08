@@ -44,10 +44,12 @@ const getUserBookings = async (req, res, next) => {
 
     const page = validatedQuery.page || 1;
     const limit = validatedQuery.limit || 10;
+    const eventId = validatedQuery.eventId;
 
     const result = await bookingService.getUserBookings(
       req.user.id,
       req.user.role,
+      eventId ?? undefined,
       page,
       limit
     );

@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { Formik, Form, Field } from "formik";
-import { useState } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useCreateEvent } from "@/hooks/useEvents";
@@ -16,6 +15,7 @@ import {
 } from "@/components/ui/popover";
 import { eventSchema } from "@/validators/eventValidators";
 import { handleQuantityOnchange, cn } from "@/lib/utils";
+import ImageUploader from "@/components/common/ImageUploader";
 
 export const CreateEventPage = () => {
   const navigate = useNavigate();
@@ -23,13 +23,34 @@ export const CreateEventPage = () => {
 
   const handleSubmit = async (values: any) => {
     try {
-      // Format the date as YYYY-MM-DD string
       const formattedValues = {
         ...values,
         date: values.date ? format(values.date, "yyyy-MM-dd") : "",
       };
-      
-      await createEvent.mutateAsync(formattedValues);
+
+      if (formattedValues.images) {
+        const fd = new FormData();
+        Object.entries(formattedValues).forEach(([key, val]) => {
+          if (key === 'images' || val === undefined || val === null) return;
+
+          if (typeof val === 'object' && !(val instanceof File)) {
+            fd.append(key, JSON.stringify(val));
+          } else {
+            fd.append(key, String(val));
+          }
+        });
+
+        const imgs = formattedValues.images;
+        if (Array.isArray(imgs)) {
+          imgs.forEach((f: File) => fd.append('images', f));
+        } else {
+          fd.append('images', imgs as File);
+        }
+
+        await createEvent.mutateAsync(fd as any);
+      } else {
+        await createEvent.mutateAsync(formattedValues);
+      }
       navigate("/events");
     } catch (error) {
       return;
@@ -47,6 +68,7 @@ export const CreateEventPage = () => {
             initialValues={{
               title: "",
               description: "",
+              images: undefined,
               date: null,
               location: "",
               ticket_price: "",
@@ -58,7 +80,7 @@ export const CreateEventPage = () => {
             {({ errors, touched, setFieldValue, values }) => (
               <Form className="space-y-4">
                 <div>
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title">Title*</Label>
                   <Field name="title" as={Input} />
                   {errors.title && touched.title && (
                     <p className="text-sm text-destructive mt-1">
@@ -82,7 +104,31 @@ export const CreateEventPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="date">Date</Label>
+                  <Label htmlFor="images">Event Images (Optional)</Label>
+                  <ImageUploader
+                    onFileChange={(file) => {
+                      if (file) {
+                        setFieldValue("images", file);
+                        console.log("upoad file:", file)
+                      } else {
+                        setFieldValue("images", undefined);
+                      }
+                    }}
+                    multiple={true}
+                    maxFiles={10}
+                    maxFileSize={5 * 1024 * 1024}
+                    label="Upload Event Images"
+                    description="Upload up to 5 images for your event"
+                  />
+                  {errors.images && touched.images && (
+                    <p className="text-sm text-destructive mt-1">
+                      {errors.images as string}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="date">Date*</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -106,7 +152,6 @@ export const CreateEventPage = () => {
                         selected={values.date ?? undefined}
                         onSelect={(date) => setFieldValue("date", date)}
                         disabled={(date) => {
-                          // Disable past dates
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
                           return date < today;
@@ -123,7 +168,7 @@ export const CreateEventPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="location">Location*</Label>
                   <Field name="location" as={Input} />
                   {errors.location && touched.location && (
                     <p className="text-sm text-destructive mt-1">
@@ -133,7 +178,7 @@ export const CreateEventPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="ticket_price">Ticket Price</Label>
+                  <Label htmlFor="ticket_price">Ticket Price*</Label>
                   <Field
                     name="ticket_price"
                     type="number"
@@ -149,7 +194,7 @@ export const CreateEventPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="capacity">Capacity</Label>
+                  <Label htmlFor="capacity">Capacity*</Label>
                   <Field
                     name="capacity"
                     type="number"

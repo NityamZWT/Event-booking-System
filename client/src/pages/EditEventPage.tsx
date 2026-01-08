@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Formik, Form, Field } from "formik";
-import { useState } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useEvent, useUpdateEvent } from "@/hooks/useEvents";
@@ -18,25 +17,80 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { eventSchema } from "@/validators/eventValidators";
 import { Booking, EventFormValues } from "@/types";
 import { handleQuantityOnchange, cn } from "@/lib/utils";
+import ImageUploader, {
+  ExistingImage,
+} from "@/components/common/ImageUploader";
 
 export const EditEventPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data, isLoading, error } = useEvent(id ? parseInt(id) : null);
   const updateEvent = useUpdateEvent();
-  
-  // Parse initial date from the event data
   const initialDate = data?.data?.date ? new Date(data.data.date) : null;
+
+  const initialImages: ExistingImage[] =
+    data?.data?.images?.map((img: any) => ({
+      url: img.url,
+      public_id: img.public_id || img.id || img.publicId,
+      id: img.public_id || img.id || img.publicId,
+    }))?.filter((img): img is any => !!img.public_id && typeof img.public_id === "string") || [];
 
   const handleSubmit = async (values: EventFormValues) => {
     try {
-      await updateEvent.mutateAsync({ 
-        id: parseInt(id!), 
-        data: values 
+      const fd = new FormData();
+
+      Object.entries(values).forEach(([key, val]) => {
+        if (
+          key === "images" ||
+          key === "retain_images" ||
+          val === undefined ||
+          val === null
+        )
+          return;
+
+        if (typeof val === "object" && !(val instanceof File)) {
+          fd.append(key, JSON.stringify(val));
+        } else {
+          fd.append(key, String(val));
+        }
       });
+
+      const images = values.images || [];
+
+      const newFiles: File[] = images.filter(
+        (img: any) => img instanceof File
+      ) as File[];
+
+      const existingImages = images.filter(
+        (img: any) => !(img instanceof File) && img && img.url
+      );
+
+      const retainIds = existingImages
+        .map((img) => {
+          if (!(img instanceof File) && img.public_id && typeof img.public_id === "string") {
+            return img.public_id;
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      fd.append("retain_images", JSON.stringify(retainIds));
+
+      console.log("Submitting with retain_ids:", retainIds);
+      console.log("New files to upload:", newFiles.length);
+
+      newFiles.forEach((file) => {
+        fd.append("images", file);
+      });
+
+      await updateEvent.mutateAsync({
+        id: parseInt(id!),
+        data: fd as any,
+      });
+
       navigate("/events");
-    } catch {
-      return;
+    } catch (error) {
+      console.error("Error updating event:", error);
     }
   };
 
@@ -44,11 +98,11 @@ export const EditEventPage = () => {
   if (error) return <div>Error loading event</div>;
 
   const event = data?.data;
-
-  const bookedTickets = data?.data?.bookings?.reduce(
-  (sum: number, booking: Booking) => sum + (booking.quantity || 0),
-  0
-) || 0;
+  const bookedTickets =
+    data?.data?.bookings?.reduce(
+      (sum: number, booking: Booking) => sum + (booking.quantity || 0),
+      0
+    ) || 0;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -61,6 +115,7 @@ export const EditEventPage = () => {
             initialValues={{
               title: event!.title,
               description: event!.description || "",
+              images: initialImages as Array<{url: string; public_id: string}>,
               date: initialDate ? format(initialDate, "yyyy-MM-dd") : "",
               location: event!.location,
               ticket_price: event!.ticket_price,
@@ -69,15 +124,19 @@ export const EditEventPage = () => {
             validationSchema={eventSchema(bookedTickets)}
             onSubmit={handleSubmit}
           >
-            {({ errors, touched, setFieldValue, values }) => {
-              // Convert date string to Date object for the calendar
+            {({ errors, touched, setFieldValue, values, isValid, dirty }) => {
               const dateObj = values.date ? new Date(values.date) : null;
-              
+
               return (
                 <Form className="space-y-4">
+                  {/* Title */}
                   <div>
-                    <Label htmlFor="title">Title</Label>
-                    <Field name="title" as={Input} />
+                    <Label htmlFor="title">Title *</Label>
+                    <Field
+                      name="title"
+                      as={Input}
+                      placeholder="Enter event title"
+                    />
                     {errors.title && touched.title && (
                       <p className="text-sm text-destructive mt-1">
                         {errors.title}
@@ -91,6 +150,7 @@ export const EditEventPage = () => {
                       name="description"
                       as="textarea"
                       className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Describe your event..."
                     />
                     {errors.description && touched.description && (
                       <p className="text-sm text-destructive mt-1">
@@ -99,8 +159,9 @@ export const EditEventPage = () => {
                     )}
                   </div>
 
+                  {/* Date */}
                   <div>
-                    <Label htmlFor="date">Date</Label>
+                    <Label htmlFor="date">Date *</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -123,7 +184,6 @@ export const EditEventPage = () => {
                           mode="single"
                           selected={dateObj ?? undefined}
                           onSelect={(date) => {
-                            // Convert selected Date to YYYY-MM-DD string for Formik
                             if (date) {
                               setFieldValue("date", format(date, "yyyy-MM-dd"));
                             } else {
@@ -131,7 +191,6 @@ export const EditEventPage = () => {
                             }
                           }}
                           disabled={(date) => {
-                            // Disable past dates
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
                             return date < today;
@@ -147,9 +206,36 @@ export const EditEventPage = () => {
                     )}
                   </div>
 
+                  {/* Images */}
                   <div>
-                    <Label htmlFor="location">Location</Label>
-                    <Field name="location" as={Input} />
+                    <Label htmlFor="images">Event Images</Label>
+                    <ImageUploader
+                      existingImages={initialImages}
+                      setFieldValue={setFieldValue}
+                      name="images"
+                      multiple={true}
+                      maxFiles={5}
+                      maxFileSize={5 * 1024 * 1024}
+                      label="Upload Event Images"
+                      description="Add new images or manage existing ones"
+                    />
+                    {errors.images && touched.images && (
+                      <p className="text-sm text-destructive mt-1">
+                        {typeof errors.images === "string"
+                          ? errors.images
+                          : "Invalid images"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <Label htmlFor="location">Location *</Label>
+                    <Field
+                      name="location"
+                      as={Input}
+                      placeholder="Enter event location"
+                    />
                     {errors.location && touched.location && (
                       <p className="text-sm text-destructive mt-1">
                         {errors.location}
@@ -157,14 +243,16 @@ export const EditEventPage = () => {
                     )}
                   </div>
 
+                  {/* Ticket Price */}
                   <div>
-                    <Label htmlFor="ticket_price">Ticket Price</Label>
+                    <Label htmlFor="ticket_price">Ticket Price *</Label>
                     <Field
                       name="ticket_price"
                       type="number"
                       step="0.01"
                       min="0"
                       as={Input}
+                      placeholder="0.00"
                     />
                     {errors.ticket_price && touched.ticket_price && (
                       <p className="text-sm text-destructive mt-1">
@@ -173,16 +261,20 @@ export const EditEventPage = () => {
                     )}
                   </div>
 
+                  {/* Capacity */}
                   <div>
-                    <Label htmlFor="capacity">Capacity</Label>
+                    <Label htmlFor="capacity">Capacity *</Label>
                     <Field
                       name="capacity"
                       type="number"
                       min="1"
                       as={Input}
-                      onChange={handleQuantityOnchange(setFieldValue, "capacity")}
+                      placeholder="Enter maximum capacity"
+                      onChange={handleQuantityOnchange(
+                        setFieldValue,
+                        "capacity"
+                      )}
                       onKeyDown={(e: any) => {
-                        // Block decimal, negative, and scientific notation
                         if ([".", ",", "-", "e", "E", "+"].includes(e.key)) {
                           e.preventDefault();
                         }
@@ -195,14 +287,30 @@ export const EditEventPage = () => {
                     )}
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button type="submit" disabled={updateEvent.isPending}>
+                  {/* Booked Tickets Info */}
+                  {bookedTickets > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm text-blue-700">
+                        ⓘ {bookedTickets} tickets have already been booked for
+                        this event. You cannot reduce capacity below{" "}
+                        {bookedTickets}.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-4">
+                    <Button
+                      type="submit"
+                      disabled={updateEvent.isPending || !isValid || !dirty}
+                    >
                       {updateEvent.isPending ? "Updating..." : "Update Event"}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => navigate("/events")}
+                      disabled={updateEvent.isPending}
                     >
                       Cancel
                     </Button>

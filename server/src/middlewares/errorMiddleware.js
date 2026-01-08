@@ -73,6 +73,7 @@ const errorHandler = (err, req, res, next) => {
       success: false,
       type: dbError.type,
       message: dbError.message,
+      error:err.message,
     });
   }
 

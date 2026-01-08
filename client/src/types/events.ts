@@ -5,6 +5,7 @@ export interface Event {
   id: number;
   title: string;
   description?: string;
+  images?: Array<{url: string; public_id: string}>;
   date: string;
   location: string;
   ticket_price: number;
@@ -54,6 +55,7 @@ export interface PaginatedResponse<T> {
 export interface EventFormValues {
   title: string;
   description: string;
+  images?: File[] | Array<{url: string; public_id: string}>;
   date: string;
   location: string;
   ticket_price: number;

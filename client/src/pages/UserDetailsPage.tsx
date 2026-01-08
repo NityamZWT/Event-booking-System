@@ -1,9 +1,8 @@
-// pages/UserDetailPage.tsx
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAppSelector } from "@/store/hook";
 import { useUser, useDeleteUser, useUpdateUserRole } from "@/hooks/useUsers";
-import { useDeleteEvent } from "@/hooks/useEvents"; // Import delete event hook
+import { useDeleteEvent } from "@/hooks/useEvents"; 
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +12,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -32,8 +30,6 @@ import {
   Users,
   DollarSign,
   Ticket,
-  Trash2,
-  Edit,
   AlertCircle,
 } from "lucide-react";
 

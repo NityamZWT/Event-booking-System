@@ -9,6 +9,7 @@ import {
 interface GetBookingsParams {
   page?: number;
   limit?: number;
+  eventId?: number | null;
 }
 
 export const bookingsAPI = {
@@ -34,4 +35,13 @@ export const bookingsAPI = {
     const response = await axios.delete<ApiResponse<null>>(`/bookings/${id}`);
     return response.data;
   },
+
+  getBookingsByEventId: async (eventId: number) => {
+    // Server supports filtering bookings via query params on /bookings
+    const response = await axios.get<ApiResponse<PaginatedResponse<Booking>>>(
+      "/bookings",
+      { params: { eventId } }
+    );
+    return response.data;
+  }
 };

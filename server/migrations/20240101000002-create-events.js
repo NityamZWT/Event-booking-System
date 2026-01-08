@@ -13,8 +13,13 @@ module.exports = {
         allowNull: false,
       },
       description: {
-        type: DataTypes.STRING(1000),
+        type: Sequelize.STRING(1000),
         allowNull: true
+      },
+      images: {
+        type: Sequelize.TEXT, // CHANGED: Use TEXT instead of ARRAY
+        allowNull: true,
+        defaultValue: '[]', // Default empty JSON array
       },
       date: {
         type: Sequelize.DATE,

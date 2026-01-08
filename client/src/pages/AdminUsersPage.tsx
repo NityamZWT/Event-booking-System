@@ -13,12 +13,15 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { useUsers, useDeleteUser } from "@/hooks/useUsers";
 import { Pagination, UserRole } from "@/types";
 import { useNavigate } from "react-router-dom";
+import { useAppSelector } from "@/store/hook";
+import { USER_ROLES } from "@/lib/constants";
 
 export const AdminUsersPage = () => {
   const [page, setPage] = useState(1);
   const [role, setRole] = useState<string | undefined>(undefined);
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [deleteUserName, setDeleteUserName] = useState<string>("");
+  const { user } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
 
   const { data, isLoading, error, refetch } = useUsers({
@@ -37,9 +40,9 @@ export const AdminUsersPage = () => {
     if (deleteUserId) {
       try {
         await deleteUser.mutateAsync(deleteUserId);
-        await refetch(); // Refresh the list after deletion
+        await refetch(); 
       } catch (error) {
-        // Handle error if needed
+        console.error("Error deleting user:", error);
       } finally {
         setDeleteUserId(null);
         setDeleteUserName("");
@@ -56,7 +59,6 @@ export const AdminUsersPage = () => {
     <div className="space-y-6 w-m-full">
       <h1 className="text-3xl font-bold">Users</h1>
 
-      {/* Filter Section */}
       <div className="flex gap-2 items-center w-full">
         <Select
           value={role || ""}
@@ -71,23 +73,21 @@ export const AdminUsersPage = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="All">All Roles</SelectItem>
-            <SelectItem value={UserRole.CUSTOMER}>Customer</SelectItem>
-            <SelectItem value={UserRole.EVENT_MANAGER}>
-              Event Manager
-            </SelectItem>
-            <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+            {(Object.values(USER_ROLES) as UserRole[]).map((role) => (
+              <SelectItem key={role} value={role}>
+                {role}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Users Card */}
       <Card className="relative">
         <CardHeader>
           <CardTitle>User List</CardTitle>
         </CardHeader>
 
         <CardContent className="min-h-[400px]">
-          {/* Loading Overlay */}
           {isLoading && (
             <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
               <div className="text-center space-y-2">
@@ -99,7 +99,6 @@ export const AdminUsersPage = () => {
             </div>
           )}
 
-          {/* Empty State */}
           {!isLoading && users.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground text-lg">No users found</p>
@@ -115,7 +114,6 @@ export const AdminUsersPage = () => {
             </div>
           ) : null}
 
-          {/* Users List */}
           {users.length > 0 && (
             <div className="space-y-3">
               {users.map((u: any) => (
@@ -128,7 +126,8 @@ export const AdminUsersPage = () => {
                       className="font-semibold text-decoration-line: underline cursor-pointer max-w-full"
                       onClick={() => navigate(`/admin/users/${u.id}`)}
                     >
-                      {u.first_name} {u.last_name}
+                      {u.first_name} {u.last_name}{" "}
+                      {u.id === user?.id ? "(You)" : ""}
                     </h4>
 
                     <div className="flex items-center gap-2 mt-1">
@@ -172,7 +171,6 @@ export const AdminUsersPage = () => {
             </div>
           )}
 
-          {/* Pagination */}
           {!isLoading && pagination.totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-6">
               <Button
@@ -197,7 +195,6 @@ export const AdminUsersPage = () => {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteUserId !== null}
         onOpenChange={(open) => !open && setDeleteUserId(null)}
