@@ -11,7 +11,7 @@ const authenticate = (req, res, next) => {
       throw new AuthenticationError("No token provided");
     }
 
-    if (allowedRoutes.includes(req.baseUrl) && req.method === "GET") {
+    if (allowedRoutes.includes(req.baseUrl) && req.method === "GET" && !authHeader) {
       return next();
     }
 
