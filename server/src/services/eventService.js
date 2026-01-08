@@ -221,43 +221,83 @@ class EventService {
     };
   }
 
-  async getEventById(eventId, userRole) {
-    const event = await Event.findByPk(eventId, {
+async getEventById(eventId, userRole, userId = null) {
+  const event = await Event.findByPk(eventId, {
+    attributes: [
+      "id",
+      "title",
+      "description",
+      "images",
+      "date",
+      "location",
+      "ticket_price",
+      "capacity",
+      "created_by",
+    ],
+  });
+
+  if (!event) {
+    throw new NotFoundError("Event not found");
+  }
+
+  const isPastEvent = this.compareDatesOnly(event.date, new Date());
+
+  const response = {
+    id: event.id,
+    title: event.title,
+    images: event.images,
+    description: event.description,
+    date: event.date,
+    location: event.location,
+    ticket_price: event.ticket_price,
+    capacity: event.capacity,
+    created_by: event.created_by,
+    pastEvent: isPastEvent,
+  };
+
+  if (userRole === UserRole.ADMIN) {
+    const detailedBookings = await Booking.findAll({
+      where: { event_id: eventId },
       attributes: [
         "id",
-        "title",
-        "description",
-        "images",
-        "date",
-        "location",
-        "ticket_price",
-        "capacity",
-        "created_by",
+        "attendee_name",
+        "quantity",
+        "booking_amount",
+        "createdAt",
       ],
+      order: [["createdAt", "DESC"]],
+      raw: true,
     });
 
-    if (!event) {
-      throw new NotFoundError("Event not found");
-    }
+    const totalBooked = detailedBookings.reduce(
+      (sum, booking) => sum + (booking.quantity || 0),
+      0
+    );
 
-    const isPastEvent = this.compareDatesOnly(event.date, new Date());
+    response.bookings = detailedBookings.map((booking) => ({
+      id: booking.id,
+      attendee_name: booking.attendee_name,
+      quantity: booking.quantity,
+      booking_amount: booking.booking_amount,
+      createdAt: booking.createdAt,
+    }));
+    response.totalBooked = totalBooked;
+    response.remainingTickets = event.capacity - totalBooked;
+  } else {
+    const totalBooked = (await Booking.sum("quantity", {
+      where: { event_id: eventId },
+    })) || 0;
 
-    const response = {
-      id: event.id,
-      title: event.title,
-      images: event.images,
-      description: event.description,
-      date: event.date,
-      location: event.location,
-      ticket_price: event.ticket_price,
-      capacity: event.capacity,
-      created_by: event.created_by,
-      pastEvent: isPastEvent,
-    };
+    response.totalBooked = totalBooked;
+    response.remainingTickets = event.capacity - totalBooked;
 
-    if (userRole === UserRole.ADMIN) {
-      const detailedBookings = await Booking.findAll({
-        where: { event_id: eventId },
+    // If userId is provided, get that user's bookings for this event
+    if (userId) {
+      const userBookings = await Booking.findAll({
+        where: { 
+          event_id: eventId,
+          user_id: userId  
+        },
         attributes: [
           "id",
           "attendee_name",
@@ -269,33 +309,21 @@ class EventService {
         raw: true,
       });
 
-      const totalBooked = detailedBookings.reduce(
-        (sum, booking) => sum + (booking.quantity || 0),
-        0
-      );
-
-      response.bookings = detailedBookings.map((booking) => ({
+      response.bookings = userBookings.map((booking) => ({
         id: booking.id,
         attendee_name: booking.attendee_name,
         quantity: booking.quantity,
         booking_amount: booking.booking_amount,
         createdAt: booking.createdAt,
       }));
-      response.totalBooked = totalBooked;
-      response.remainingTickets = event.capacity - totalBooked;
     } else {
-      const totalBooked =
-        (await Booking.sum("quantity", {
-          where: { event_id: eventId },
-        })) || 0;
-
+      // If no userId, just show total booked
       response.bookings = [{ quantity: totalBooked }];
-      response.totalBooked = totalBooked;
-      response.remainingTickets = event.capacity - totalBooked;
     }
-
-    return response;
   }
+
+  return response;
+}
 
 async updateEvent(eventId, updateData, userId, userRole) {
   return await sequelize.transaction(async (transaction) => {
