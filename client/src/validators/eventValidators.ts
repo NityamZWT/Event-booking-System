@@ -5,6 +5,7 @@ export const eventSchema = (bookedTickets: number = 0) => {
   return Yup.object({
     title: Yup.string().required("Title is required"),
     description: Yup.string(),
+    // images: Yup.array().of(Yup.string().url("Invalid image URL")),
     date: Yup.string()
       .required("Event date is required")
       .test("is-valid-date", "Invalid date format", (value) => {

@@ -30,6 +30,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Booking, UserRole } from "@/types";
 import { bookingSchema } from "@/validators/bookingValidators";
 import { Calendar, MapPin, Users, DollarSign, User, Clock } from "lucide-react";
+import { EventImageGallery } from "@/components/events/EventImageGallery";
 
 export const EventDetailPage = () => {
   const { id } = useParams();
@@ -120,6 +121,9 @@ export const EventDetailPage = () => {
           </CardHeader>
 
           <CardContent className="space-y-6">
+             {event?.images && event.images.length > 0 && (
+              <EventImageGallery images={event.images} />
+            )}
             { event?.description && <div>
               <h3 className="text-lg font-semibold mb-2">Description</h3>
               <p className="text-muted-foreground leading-relaxed">
@@ -402,7 +406,6 @@ export const EventDetailPage = () => {
                 </div>
               )}
 
-              {/* Delete Button (Conditional) */}
               {canDeleteEvent && (
                 <Button
                   variant="destructive"
@@ -416,7 +419,6 @@ export const EventDetailPage = () => {
           </CardContent>
         </Card>
 
-        {/* Bookings Section (Admin only) */}
         {canViewBookings && (
           <Card>
             <CardHeader>
@@ -475,7 +477,6 @@ export const EventDetailPage = () => {
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}

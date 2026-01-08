@@ -12,12 +12,12 @@ const { ValidationError } = require("../utils/errors");
 
 const createEvent = async (req, res, next) => {
   try {
+    console.log("Controller - Create request body-------:", req.body);
     const validatedData = await createEventSchema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
-    });
-
-    console.log("Controller - Validated data:", validatedData);
+    }); 
+    console.log("Controller - Create validated data:", validatedData);
     const event = await eventService.createEvent(validatedData, req.user.id);
 
     return new CreatedResponse("Event created successfully", event).send(res);
@@ -37,12 +37,28 @@ const createEvent = async (req, res, next) => {
 
 const updateEvent = async (req, res, next) => {
   try {
+    if (req.body.retain_images && typeof req.body.retain_images === 'string') {
+      try {
+        req.body.retain_images = JSON.parse(req.body.retain_images);
+      } catch (e) {
+        console.error('Error parsing retain_images:', e);
+      }
+    }
+
+    if (req.body.images && typeof req.body.images === 'string') {
+      try {
+        req.body.images = JSON.parse(req.body.images);
+      } catch (e) {
+        console.error('Error parsing images:', e);
+      }
+    }
+
     const validatedData = await updateEventSchema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
 
-    console.log("Controller - Update validated data:", validatedData);
+    console.log("Controller - Validated data:", validatedData);
 
     const event = await eventService.updateEvent(
       parseInt(req.params.id),

@@ -21,6 +21,8 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { Event, Pagination, UserRole } from "@/types";
+import { Img } from "react-image";
+import placeholderImage from "../assets/event-placeholder.jpg";
 
 export const EventsPage = () => {
   const [page, setPage] = useState(1);
@@ -30,9 +32,7 @@ export const EventsPage = () => {
   const [deleteEventId, setDeleteEventId] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Ref for search input focus
   const searchInputRef = useRef<HTMLInputElement>(null);
-  // Throttle timer ref
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { user } = useAppSelector((state) => state.auth);
@@ -47,23 +47,18 @@ export const EventsPage = () => {
   const navigate = useNavigate();
   const deleteEvent = useDeleteEvent();
 
-  // Throttle function for search
   const throttleSearch = useCallback(
     (searchTerm: string) => {
-      // Clear any existing timer
       if (searchTimerRef.current) {
         clearTimeout(searchTimerRef.current);
       }
-
-      // Show searching state
       setIsSearching(true);
 
-      // Set new timer for 300ms delay
+
       searchTimerRef.current = setTimeout(async () => {
         setQ(searchTerm);
-        setPage(1); // Reset to first page on search
+        setPage(1); 
 
-        // Refetch data without full page reload
         try {
           await refetch();
         } finally {
@@ -74,12 +69,10 @@ export const EventsPage = () => {
     [refetch]
   );
 
-  // Handle search input change with throttle
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
 
-    // If input is cleared, search immediately
     if (value === "") {
       if (searchTimerRef.current) {
         clearTimeout(searchTimerRef.current);
@@ -87,14 +80,13 @@ export const EventsPage = () => {
       setQ("");
       setPage(1);
       setIsSearching(false);
-      refetch(); // Refetch immediately when cleared
+      refetch();
       return;
     }
 
     throttleSearch(value);
   };
 
-  // Handle Enter key press
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       if (searchTimerRef.current) {
@@ -121,7 +113,6 @@ export const EventsPage = () => {
       clearTimeout(searchTimerRef.current);
     }
 
-    // Clear search input and focus on it
     if (searchInputRef.current) {
       searchInputRef.current.focus();
     }
@@ -167,7 +158,6 @@ export const EventsPage = () => {
     }
   };
 
-  // Handle page change
   const handlePageChange = async (newPage: number) => {
     setPage(newPage);
     setIsSearching(true);
@@ -178,7 +168,6 @@ export const EventsPage = () => {
     }
   };
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (searchTimerRef.current) {
@@ -187,10 +176,8 @@ export const EventsPage = () => {
     };
   }, []);
 
-  // Check if any filters are active
   const hasActiveFilters = q || selectedDate;
 
-  // Show only loading spinner on initial load
   if (isLoading && !isSearching && page === 1 && !q && !selectedDate) {
     return <LoadingSpinner />;
   }
@@ -214,10 +201,8 @@ export const EventsPage = () => {
         )}
       </div>
 
-      {/* Search and Filter Section */}
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-          {/* Search Input */}
           <div className="flex-1 min-w-[200px] relative">
             <Input
               ref={searchInputRef}
@@ -227,7 +212,7 @@ export const EventsPage = () => {
               onKeyDown={handleKeyDown}
               className="pr-10"
             />
-            {/* Search indicator */}
+
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               {isSearching ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -237,7 +222,6 @@ export const EventsPage = () => {
             </div>
           </div>
 
-          {/* Date Picker */}
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
@@ -264,7 +248,6 @@ export const EventsPage = () => {
             </Popover>
           </div>
 
-          {/* Search Button */}
           <div className="flex gap-2">
             {hasActiveFilters && (
               <Button
@@ -279,7 +262,6 @@ export const EventsPage = () => {
           </div>
         </div>
 
-        {/* Active Filters Display */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-sm text-muted-foreground">
@@ -371,16 +353,25 @@ export const EventsPage = () => {
               >
                 <CardContent className="p-6">
                   <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <Img
+                        src={
+                          event.images && event.images.length > 0
+                            ? (typeof event.images[0] === 'string' ? event.images[0] : event.images[0].url)
+                            : ""
+                        }
+                        className="w-60 h-60 rounded-md mr-4 object-cover"
+                        crossorigin="anonymous"
+                        alt={"demo image"}
+                        loader={<LoadingSpinner />}
+                        unloader={<Img src={placeholderImage} alt='placeholder' className="w-60 h-60 rounded-md mr-4 object-cover"/>}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex justify-between items-center w-full">
                         <h3 className="text-xl font-semibold mb-2">
                           {event.title}
                         </h3>
-                        {event.pastEvent === true ? (
-                          <Badge variant="destructive" className="text-xs">
-                            Past Event
-                          </Badge>
-                        ) : null}
                       </div>
                       <div className="space-y-1 text-sm text-muted-foreground">
                         <p>Date: {formatDate(event.date)}</p>
@@ -395,82 +386,88 @@ export const EventsPage = () => {
                         </p>
                       </div>
                     </div>
-                    <div
-                      className="flex gap-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {(() => {
-                        const isFull = remaining <= 0;
+                    {event.pastEvent === true ? (
+                      <Badge variant="destructive" className="text-xs">
+                        Past Event
+                      </Badge>
+                    ) : (
+                      <div
+                        className="flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {(() => {
+                          const isFull = remaining <= 0;
 
-                        if (event.pastEvent) {
-                          return null;
-                        }
+                          if (event.pastEvent) {
+                            return null;
+                          }
 
-                        if (isFull)
+                          if (isFull)
+                            return (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                disabled={true}
+                              >
+                                Full
+                              </Button>
+                            );
+
                           return (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              disabled={true}
-                            >
-                              Full
-                            </Button>
+                            <Link to={`/events/${event.id}/book`}>
+                              <Button size="sm">Book</Button>
+                            </Link>
                           );
+                        })()}
 
-                        return (
-                          <Link to={`/events/${event.id}/book`}>
-                            <Button size="sm">Book</Button>
-                          </Link>
-                        );
-                      })()}
+                        {(() => {
+                          const canEdit =
+                            !event.pastEvent &&
+                            (user?.role === UserRole.ADMIN ||
+                              (user?.role === UserRole.EVENT_MANAGER &&
+                                event.created_by === user?.id));
 
-                      {(() => {
-                        const canEdit =
-                          !event.pastEvent &&
-                          (user?.role === UserRole.ADMIN ||
-                            (user?.role === UserRole.EVENT_MANAGER &&
-                              event.created_by === user?.id));
-
-                        return canEdit ? (
-                          <Link to={`/events/${event.id}/edit`}>
-                            <Button size="sm" variant="outline">
-                              Edit
-                            </Button>
-                          </Link>
-                        ) : null;
-                      })()}
-
-                      {(() => {
-                        const bookedTickets =
-                          event.bookings?.reduce(
-                            (sum: number, booking: any) =>
-                              sum + (booking.quantity || 0),
-                            0
-                          ) || 0;
-                        const hasBookings = bookedTickets > 0;
-
-                        if (user?.role === UserRole.ADMIN) {
-                          const canDelete = event.pastEvent
-                            ? false
-                            : !hasBookings;
-
-                          return canDelete ? (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteEventId(event.id);
-                              }}
-                            >
-                              Delete
-                            </Button>
+                          return canEdit ? (
+                            <Link to={`/events/${event.id}/edit`}>
+                              <Button size="sm" variant="outline">
+                                Edit
+                              </Button>
+                            </Link>
                           ) : null;
-                        }
+                        })()}
 
-                        return null;
-                      })()}
-                    </div>
+                        {(() => {
+                          const bookedTickets =
+                            event.bookings?.reduce(
+                              (sum: number, booking: any) =>
+                                sum + (booking.quantity || 0),
+                              0
+                            ) || 0;
+                          const hasBookings = bookedTickets > 0;
+
+                          if (user?.role === UserRole.ADMIN) {
+                            const canDelete = event.pastEvent
+                              ? false
+                              : !hasBookings;
+
+                            return canDelete ? (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteEventId(event.id);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            ) : null;
+                          }
+
+                          return null;
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -502,7 +499,6 @@ export const EventsPage = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteEventId !== null}
         onOpenChange={(open) => !open && setDeleteEventId(null)}

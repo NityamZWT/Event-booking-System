@@ -30,7 +30,10 @@ export const eventsAPI = {
   },
 
   createEvent: async (data: CreateEventData) => {
-    const response = await axios.post<ApiResponse<Event>>("/events", data);
+    const config = (data instanceof FormData)
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined;
+    const response = await axios.post<ApiResponse<Event>>("/events", data as any, config);
     return response.data;
   },
 
@@ -41,7 +44,10 @@ export const eventsAPI = {
     id: number;
     data: Partial<CreateEventData>;
   }) => {
-    const response = await axios.put<ApiResponse<Event>>(`/events/${id}`, data);
+    const config = (data instanceof FormData)
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined;
+    const response = await axios.put<ApiResponse<Event>>(`/events/${id}`, data as any, config);
     return response.data;
   },
 

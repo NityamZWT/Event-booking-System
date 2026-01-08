@@ -8,6 +8,7 @@ const {
 const { UserRole } = require("../constants/common.types");
 
 const { Event, User, Booking, sequelize } = db;
+const cloudinary = require('../lib/cloudinary');
 
 class EventService {
   createLocalDate(dateInput) {
@@ -77,9 +78,11 @@ class EventService {
       console.log("Date received:", eventDate, typeof eventDate);
 
       if (typeof eventDate === "string") {
-        // Create date at midnight local time (IST)
         eventDate = this.createLocalDate(eventDate);
-        console.log("Created local date:", eventDate.toString());
+      }
+
+      if (eventData.images && Array.isArray(eventData.images)) {
+        console.log("Event images:", eventData.images);
       }
 
       const event = await Event.create(
@@ -90,13 +93,7 @@ class EventService {
         },
         { transaction }
       );
-
-      // Check if event is in the past (date-only comparison)
       const isPastEvent = this.compareDatesOnly(event.date, new Date());
-
-      console.log("Event created successfully. ID:", event.id);
-      console.log("Stored date:", event.date.toString());
-      console.log("Is past event?", isPastEvent);
 
       return {
         id: event.id,
@@ -105,6 +102,7 @@ class EventService {
         location: event.location,
         ticket_price: event.ticket_price,
         capacity: event.capacity,
+        images: event.images,
         created_by: userId,
         pastEvent: isPastEvent,
       };
@@ -171,6 +169,7 @@ class EventService {
         "title",
         "date",
         "location",
+        "images",
         "ticket_price",
         "capacity",
         "created_by",
@@ -204,6 +203,7 @@ class EventService {
         location: event.location,
         ticket_price: event.ticket_price,
         capacity: event.capacity,
+        images: event.images,
         created_by: event.created_by,
         bookings: [{ quantity: bookedTickets }],
         pastEvent: isPastEvent,
@@ -227,6 +227,7 @@ class EventService {
         "id",
         "title",
         "description",
+        "images",
         "date",
         "location",
         "ticket_price",
@@ -244,6 +245,7 @@ class EventService {
     const response = {
       id: event.id,
       title: event.title,
+      images: event.images,
       description: event.description,
       date: event.date,
       location: event.location,
@@ -295,141 +297,226 @@ class EventService {
     return response;
   }
 
-  async updateEvent(eventId, updateData, userId, userRole) {
-    return await sequelize.transaction(async (transaction) => {
-      const event = await Event.findByPk(eventId, {
-        transaction,
-        attributes: ["id", "created_by", "capacity"],
-        include: [
+async updateEvent(eventId, updateData, userId, userRole) {
+  return await sequelize.transaction(async (transaction) => {
+    const event = await Event.findByPk(eventId, {
+      transaction,
+      include: [
+        {
+          model: Booking,
+          as: "bookings",
+          attributes: ["id", "quantity"],
+        },
+      ],
+    });
+
+    if (!event) {
+      throw new NotFoundError("Event not found");
+    }
+
+    if (userRole === UserRole.EVENT_MANAGER && event.created_by !== userId) {
+      throw new AuthorizationError(
+        "You can only update events created by you"
+      );
+    }
+
+    const bookedTickets =
+      event.bookings?.reduce(
+        (sum, booking) => sum + (booking.quantity || 0),
+        0
+      ) || 0;
+
+    if (updateData.capacity !== undefined) {
+      const newCapacity = parseInt(updateData.capacity, 10);
+
+      if (newCapacity < bookedTickets) {
+        throw new ValidationError(
+          `Capacity cannot be less than ${bookedTickets} (already booked tickets)`,
           {
-            model: Booking,
-            as: "bookings",
-            attributes: ["id", "quantity"],
-          },
-        ],
-      });
-
-      if (!event) {
-        throw new NotFoundError("Event not found");
-      }
-
-      if (userRole === UserRole.EVENT_MANAGER && event.created_by !== userId) {
-        throw new AuthorizationError(
-          "You can only update events created by you"
+            capacity: `Capacity cannot be less than ${bookedTickets} (already booked tickets)`,
+          }
         );
       }
+    }
 
-      const bookedTickets =
-        event.bookings?.reduce(
-          (sum, booking) => sum + (booking.quantity || 0),
-          0
-        ) || 0;
+    if (updateData.date && typeof updateData.date === "string") {
+      updateData.date = this.createLocalDate(updateData.date);
 
-      if (updateData.capacity !== undefined) {
-        const newCapacity = parseInt(updateData.capacity, 10);
+      if (userRole !== UserRole.ADMIN) {
+        const today = new Date();
+        const todayOnly = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
+        const eventDateOnly = new Date(
+          updateData.date.getFullYear(),
+          updateData.date.getMonth(),
+          updateData.date.getDate()
+        );
 
-        if (newCapacity < bookedTickets) {
+        if (this.compareDatesOnly(eventDateOnly, todayOnly)) {
           throw new ValidationError(
-            `Capacity cannot be less than ${bookedTickets} (already booked tickets)`,
+            "Event date must be today or in the future",
             {
-              capacity: `Capacity cannot be less than ${bookedTickets} (already booked tickets)`,
+              date: "Event date must be today or in the future",
             }
           );
         }
       }
+    }
 
-      if (updateData.date && typeof updateData.date === "string") {
-        updateData.date = this.createLocalDate(updateData.date);
-
-        if (userRole !== UserRole.ADMIN) {
-          const today = new Date();
-          const todayOnly = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate()
-          );
-          const eventDateOnly = new Date(
-            updateData.date.getFullYear(),
-            updateData.date.getMonth(),
-            updateData.date.getDate()
-          );
-
-          if (this.compareDatesOnly(eventDateOnly, todayOnly)) {
-            throw new ValidationError(
-              "Event date must be today or in the future",
-              {
-                date: "Event date must be today or in the future",
-              }
-            );
+    if (updateData.images !== undefined || updateData.retain_images !== undefined) {
+      const existingImages = event.images || [];
+      
+      let retainIds = [];
+      if (updateData.retain_images) {
+        if (typeof updateData.retain_images === 'string') {
+          try {
+            retainIds = JSON.parse(updateData.retain_images);
+          } catch (e) {
+            console.error('Error parsing retain_images:', e);
+            retainIds = [];
           }
+        } else if (Array.isArray(updateData.retain_images)) {
+          retainIds = updateData.retain_images;
         }
       }
+      console.log('Retain IDs:', retainIds);
+      console.log('Retain IDs count:', retainIds.length);
 
-      await Event.update(updateData, {
-        where: { id: eventId },
-        transaction,
-      });
-
-      const updatedEvent = await Event.findByPk(eventId, {
-        attributes: [
-          "id",
-          "title",
-          "date",
-          "location",
-          "ticket_price",
-          "capacity",
-          "created_by",
-        ],
-        transaction,
-      });
-
-      const isPastEvent = this.compareDatesOnly(updatedEvent.date, new Date());
-
-      return {
-        id: updatedEvent.id,
-        title: updatedEvent.title,
-        date: updatedEvent.date,
-        location: updatedEvent.location,
-        ticket_price: updatedEvent.ticket_price,
-        capacity: updatedEvent.capacity,
-        created_by: updatedEvent.created_by,
-        pastEvent: isPastEvent,
-      };
-    });
-  }
-
-  async deleteEvent(eventId, userId, userRole) {
-    return await sequelize.transaction(async (transaction) => {
-      const event = await Event.findByPk(eventId, {
-        transaction,
-        attributes: ["id", "created_by"],
-      });
-
-      if (!event) {
-        throw new NotFoundError("Event not found");
-      }
-
-      if (userRole === UserRole.EVENT_MANAGER && event.created_by !== userId) {
-        throw new AuthorizationError(
-          "You can only delete events created by you"
+      const newImages = Array.isArray(updateData.images) ? updateData.images : [];
+      console.log('New uploaded images count:', newImages.length);
+      
+      let finalImages = [];
+      
+      if (retainIds.length > 0) {
+        const keptExistingImages = existingImages.filter((img) => 
+          retainIds.includes(img.public_id)
         );
-      }
 
-      if (userRole === UserRole.CUSTOMER) {
-        throw new AuthorizationError(
-          "Only administrators or event managers can delete events"
+        const imagesToDelete = existingImages.filter((img) => 
+          !retainIds.includes(img.public_id)
         );
+
+        for (const img of imagesToDelete) {
+          try {
+            if (img.public_id) {
+              await cloudinary.destroy(img.public_id);
+            }
+          } catch (err) {
+            console.error('Failed to delete Cloudinary image', img.public_id, err);
+          }
+        }
+        
+        finalImages = [...keptExistingImages, ...newImages];
+        
+      } else if (updateData.retain_images === null || updateData.retain_images === undefined) {
+        finalImages = [...existingImages, ...newImages];
+        
+      } else if (Array.isArray(updateData.retain_images) && updateData.retain_images.length === 0) {
+
+        for (const img of existingImages) {
+          try {
+            if (img.public_id) {
+              console.log('Deleting from Cloudinary:', img.public_id);
+              await cloudinary.destroy(img.public_id);
+              console.log('Successfully deleted:', img.public_id);
+            }
+          } catch (err) {
+            console.error('Failed to delete Cloudinary image', img.public_id, err);
+          }
+        }
+
+        finalImages = [...newImages];
       }
 
-      await Booking.destroy({ where: { event_id: eventId }, transaction });
-      await Event.destroy({
-        where: { id: eventId },
-        transaction,
-      });
+      updateData.images = finalImages;
 
-      return { message: "Event deleted successfully" };
+      delete updateData.retain_images;
+    }
+
+    const updateFields = { ...updateData };
+
+    if (updateFields.images !== undefined) {
+      await event.update(
+        { images: updateFields.images },
+        { transaction }
+      );
+      delete updateFields.images;
+    }
+
+    if (Object.keys(updateFields).length > 0) {
+      await event.update(updateFields, { transaction });
+    }
+
+    await event.reload({ transaction });
+
+    const isPastEvent = this.compareDatesOnly(event.date, new Date());
+
+    return {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      images: event.images,
+      date: event.date,
+      location: event.location,
+      ticket_price: event.ticket_price,
+      capacity: event.capacity,
+      created_by: event.created_by,
+      pastEvent: isPastEvent,
+    };
+  });
+}
+
+async deleteEvent(eventId, userId, userRole) {
+  return await sequelize.transaction(async (transaction) => {
+    const event = await Event.findByPk(eventId, {
+      transaction,
+      attributes: ["id", "created_by", "images"],
     });
-  }
+
+    if (!event) {
+      throw new NotFoundError("Event not found");
+    }
+
+    if (userRole === UserRole.EVENT_MANAGER && event.created_by !== userId) {
+      throw new AuthorizationError(
+        "You can only delete events created by you"
+      );
+    }
+
+    if (userRole === UserRole.CUSTOMER) {
+      throw new AuthorizationError(
+        "Only administrators or event managers can delete events"
+      );
+    }
+
+    if (event.images && Array.isArray(event.images)) {
+      console.log(`Deleting ${event.images.length} images from Cloudinary for event ${eventId}`);
+      
+      for (const img of event.images) {
+        try {
+          if (img.public_id) {
+            console.log('Deleting from Cloudinary:', img.public_id);
+            await cloudinary.destroy(img.public_id);
+            console.log('Successfully deleted:', img.public_id);
+          }
+        } catch (err) {
+          console.error('Failed to delete Cloudinary image', img.public_id, err);
+        }
+      }
+    }
+    await Booking.destroy({ where: { event_id: eventId }, transaction });
+    
+    await Event.destroy({
+      where: { id: eventId },
+      transaction,
+    });
+
+    return { message: "Event deleted successfully" };
+  });
+}
 
   async getEventsList(processedSearchTerm, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
