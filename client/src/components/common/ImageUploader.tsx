@@ -241,18 +241,6 @@ const ImageUploader: React.FC<Props> = ({
     setImagesToRemove((prev) => prev.filter((id) => id !== imageId));
   };
 
-  // REMOVE THIS FUNCTION - It's not being used
-  // const removeExistingImage = (index: number) => {
-  //   const updatedImages = retainedExistingImages.filter((_, i) => i !== index);
-  //   setRetainedExistingImages(updatedImages);
-  //   // Also remove from imagesToRemove if it was there
-  //   const image = retainedExistingImages[index];
-  //   const imageId = image.public_id || image.id?.toString() || "";
-  //   if (imageId) {
-  //     setImagesToRemove(prev => prev.filter(id => id !== imageId));
-  //   }
-  // };
-
   const removeNewFile = (index: number) => {
     const newFiles = files.filter((_, i) => i !== index);
     const newPreviews = previews.filter((_, i) => i !== index);
@@ -265,15 +253,12 @@ const ImageUploader: React.FC<Props> = ({
   };
 
   const clearAll = () => {
-    // Clean up new file previews
     previews.forEach((preview) => URL.revokeObjectURL(preview));
 
-    // Clear all new files
     setFiles([]);
     setPreviews([]);
     setUploadProgress(0);
 
-    // Mark ALL existing images for removal
     const allExistingIds = retainedExistingImages
       .map((img) => img.public_id || img.id?.toString() || "")
       .filter(Boolean);
@@ -281,10 +266,8 @@ const ImageUploader: React.FC<Props> = ({
 
     setError("");
 
-    // Reset input
     setInputKey(Date.now());
 
-    // This will trigger the useEffect and update Formik
   };
 
   const clearNewFiles = () => {
@@ -298,7 +281,6 @@ const ImageUploader: React.FC<Props> = ({
   };
 
   const clearExistingImages = () => {
-    // Mark all existing images for removal
     const allIds = retainedExistingImages
       .map((img) => img.public_id || img.id?.toString() || "")
       .filter(Boolean);
