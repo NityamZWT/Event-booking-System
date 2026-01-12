@@ -113,6 +113,13 @@ class EventService {
     const offset = (page - 1) * limit;
     const where = {};
 
+    // Exclude past events
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    where.date = {
+      [Op.gte]: currentDate,
+    };
+
     if (filters.created_by) {
       where.created_by = filters.created_by;
     }
@@ -145,6 +152,7 @@ class EventService {
 
         console.log("Filter date range:", filterDate, "to", nextDay);
 
+        // Combine with the existing date condition (show only future events on this date)
         where.date = {
           [Op.gte]: filterDate,
           [Op.lt]: nextDay,

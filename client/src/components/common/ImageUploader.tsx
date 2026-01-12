@@ -66,7 +66,7 @@ const ImageUploader: React.FC<Props> = ({
     if (existingImages && existingImages.length > 0) {
       setRetainedExistingImages(existingImages);
       // Initialize imagesToRemove as empty
-      setImagesToRemove([]);
+      // setImagesToRemove([]);
     }
   }, [existingImages]);
 
@@ -461,7 +461,7 @@ const ImageUploader: React.FC<Props> = ({
               <h3 className="font-semibold">{label}</h3>
               <p className="text-sm text-muted-foreground">{description}</p>
               <p className="text-xs text-muted-foreground">
-                Supported: JPG, PNG, GIF, WEBP • Max:{" "}
+                Supported: JPG, JPEG, PNG • Max:{" "}
                 {formatFileSize(maxFileSize)}
               </p>
             </div>

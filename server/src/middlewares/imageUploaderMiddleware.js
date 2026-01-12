@@ -1,4 +1,3 @@
-// lib/multer-upload.js (or wherever your imageUploaderasync is)
 const fs = require('fs');
 const cloudinary = require('../lib/cloudinary');
 const upload = require('../lib/multer');
@@ -33,9 +32,6 @@ const imageUploaderasync = (req, res, next) => {
                 ...existingBody, 
                 images: uploaded 
             };
-            
-            console.log('Uploaded image metadata:', uploaded);
-            console.log('Preserved retain_images:', existingBody.retain_images);
 
             return next();
         } catch (error) {

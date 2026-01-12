@@ -10,6 +10,25 @@ const { UserRole } = require("../constants/common.types");
 const { Booking, Event, User, sequelize } = db;
 
 class BookingService {
+  compareDatesOnly(date1, date2) {
+    try {
+      const d1 = new Date(
+        date1.getFullYear(),
+        date1.getMonth(),
+        date1.getDate()
+      );
+      const d2 = new Date(
+        date2.getFullYear(),
+        date2.getMonth(),
+        date2.getDate()
+      );
+      return d1 < d2;
+    } catch (error) {
+      console.error("Error in compareDatesOnly:", error);
+      return false;
+    }
+  }
+
   async createBooking(bookingData, userId) {
     return await sequelize.transaction(
       {
@@ -73,7 +92,6 @@ class BookingService {
           transaction,
         });
 
-        // Return only required fields
         return {
           id: createdBooking.id,
           attendee_name: createdBooking.attendee_name,
@@ -126,20 +144,25 @@ class BookingService {
       ],
     });
 
-    const bookings = rows.map((booking) => ({
-      id: booking.id,
-      user_id: booking.user_id,
-      attendee_name: booking.attendee_name,
-      quantity: booking.quantity,
-      booking_amount: booking.booking_amount,
-      createdAt: booking.createdAt,
-      event: {
-        id: booking.event.id,
-        title: booking.event.title,
-        date: booking.event.date,
-        location: booking.event.location,
-      }
-    }));
+    const bookings = rows.map((booking) => {
+      const isPastEvent = this.compareDatesOnly(booking.event.date, new Date());
+
+      return {
+        id: booking.id,
+        user_id: booking.user_id,
+        attendee_name: booking.attendee_name,
+        quantity: booking.quantity,
+        booking_amount: booking.booking_amount,
+        createdAt: booking.createdAt,
+        event: {
+          id: booking.event.id,
+          title: booking.event.title,
+          date: booking.event.date,
+          location: booking.event.location,
+          pastEvent: isPastEvent,
+        },
+      };
+    });
 
     return {
       bookings,
