@@ -234,7 +234,7 @@ export const EditEventPage = () => {
 
                   {/* Images */}
                   <div>
-                    <Label htmlFor="images">Event Images</Label>
+                    <Label htmlFor="images">Event Images (Optional)</Label>
                     <ImageUploader
                       existingImages={initialImages}
                       setFieldValue={setFieldValue}
