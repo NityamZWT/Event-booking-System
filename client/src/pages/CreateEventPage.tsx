@@ -31,9 +31,9 @@ export const CreateEventPage = () => {
       if (formattedValues.images) {
         const fd = new FormData();
         Object.entries(formattedValues).forEach(([key, val]) => {
-          if (key === 'images' || val === undefined || val === null) return;
+          if (key === "images" || val === undefined || val === null) return;
 
-          if (typeof val === 'object' && !(val instanceof File)) {
+          if (typeof val === "object" && !(val instanceof File)) {
             fd.append(key, JSON.stringify(val));
           } else {
             fd.append(key, String(val));
@@ -42,9 +42,9 @@ export const CreateEventPage = () => {
 
         const imgs = formattedValues.images;
         if (Array.isArray(imgs)) {
-          imgs.forEach((f: File) => fd.append('images', f));
+          imgs.forEach((f: File) => fd.append("images", f));
         } else {
-          fd.append('images', imgs as File);
+          fd.append("images", imgs as File);
         }
 
         await createEvent.mutateAsync(fd as any);
@@ -106,14 +106,8 @@ export const CreateEventPage = () => {
                 <div>
                   <Label htmlFor="images">Event Images (Optional)</Label>
                   <ImageUploader
-                    onFileChange={(file) => {
-                      if (file) {
-                        setFieldValue("images", file);
-                        console.log("upoad file:", file)
-                      } else {
-                        setFieldValue("images", undefined);
-                      }
-                    }}
+                    setFieldValue={setFieldValue}
+                    name="images"
                     multiple={true}
                     maxFiles={10}
                     maxFileSize={5 * 1024 * 1024}

@@ -21,6 +21,11 @@ import ImageUploader, {
   ExistingImage,
 } from "@/components/common/ImageUploader";
 
+export interface EditEventFormValues extends EventFormValues {
+  retain_images?: string[];
+  remove_images?: string[];
+}
+
 export const EditEventPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,13 +34,18 @@ export const EditEventPage = () => {
   const initialDate = data?.data?.date ? new Date(data.data.date) : null;
 
   const initialImages: ExistingImage[] =
-    data?.data?.images?.map((img: any) => ({
-      url: img.url,
-      public_id: img.public_id || img.id || img.publicId,
-      id: img.public_id || img.id || img.publicId,
-    }))?.filter((img): img is any => !!img.public_id && typeof img.public_id === "string") || [];
+    data?.data?.images
+      ?.map((img: any) => ({
+        url: img.url,
+        public_id: img.public_id || img.id || img.publicId,
+        id: img.public_id || img.id || img.publicId,
+      }))
+      ?.filter(
+        (img): img is any =>
+          !!img.public_id && typeof img.public_id === "string"
+      ) || [];
 
-  const handleSubmit = async (values: EventFormValues) => {
+  const handleSubmit = async (values: EditEventFormValues) => {
     try {
       const fd = new FormData();
 
@@ -43,6 +53,7 @@ export const EditEventPage = () => {
         if (
           key === "images" ||
           key === "retain_images" ||
+          key === "remove_images" ||
           val === undefined ||
           val === null
         )
@@ -67,16 +78,24 @@ export const EditEventPage = () => {
 
       const retainIds = existingImages
         .map((img) => {
-          if (!(img instanceof File) && img.public_id && typeof img.public_id === "string") {
+          if (
+            !(img instanceof File) &&
+            img.public_id &&
+            typeof img.public_id === "string"
+          ) {
             return img.public_id;
           }
           return null;
         })
         .filter(Boolean);
 
+      const removeImages = values.remove_images || [];
+
       fd.append("retain_images", JSON.stringify(retainIds));
+      fd.append("remove_images", JSON.stringify(removeImages));
 
       console.log("Submitting with retain_ids:", retainIds);
+      console.log("Submitting with remove_images:", removeImages);
       console.log("New files to upload:", newFiles.length);
 
       newFiles.forEach((file) => {
@@ -115,11 +134,18 @@ export const EditEventPage = () => {
             initialValues={{
               title: event!.title,
               description: event!.description || "",
-              images: initialImages as Array<{url: string; public_id: string}>,
+              images: initialImages as Array<{
+                url: string;
+                public_id: string;
+              }>,
               date: initialDate ? format(initialDate, "yyyy-MM-dd") : "",
               location: event!.location,
               ticket_price: event!.ticket_price,
               capacity: event!.capacity,
+              retain_images: initialImages
+                .map((img) => img.public_id)
+                .filter((id): id is string => !!id),
+              remove_images: [],
             }}
             validationSchema={eventSchema(bookedTickets)}
             onSubmit={handleSubmit}

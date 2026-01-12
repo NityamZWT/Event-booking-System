@@ -60,6 +60,8 @@ export interface EventFormValues {
   location: string;
   ticket_price: number;
   capacity: number;
+  retain_images?: string[];
+  remove_images?: string[];
 }
 
 
