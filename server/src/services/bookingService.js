@@ -226,40 +226,58 @@ class BookingService {
     };
   }
 
-  async cancelBooking(bookingId, userId, userRole) {
-    return await sequelize.transaction(async (transaction) => {
-      const booking = await Booking.findByPk(bookingId, {
-        transaction,
-        attributes: ["id", "user_id", "event_id"],
-      });
-
-      if (!booking) {
-        throw new NotFoundError("Booking not found");
-      }
-
-      if (userRole === UserRole.CUSTOMER && booking.user_id !== userId) {
-        throw new AuthorizationError("You can only cancel your own bookings");
-      }
-
-      if (userRole === UserRole.EVENT_MANAGER) {
-        const event = await Event.findByPk(booking.event_id, {
-          transaction,
-          attributes: ["created_by"],
-        });
-
-        if (!event || event.created_by !== userId) {
-          throw new AuthorizationError("Event managers cannot cancel bookings");
-        }
-      }
-
-      await Booking.destroy({
-        where: { id: bookingId },
-        transaction,
-      });
-
-      return { message: "Booking cancelled successfully" };
+async cancelBooking(bookingId, userId, userRole) {
+  return await sequelize.transaction(async (transaction) => {
+    const booking = await Booking.findByPk(bookingId, {
+      transaction,
+      attributes: ["id", "user_id", "event_id", "session_id", "booking_amount"],
     });
-  }
+
+    if (!booking) {
+      throw new NotFoundError("Booking not found");
+    }
+
+    if (userRole === UserRole.CUSTOMER && booking.user_id !== userId) {
+      throw new AuthorizationError("You can only cancel your own bookings");
+    }
+
+    if (userRole === UserRole.EVENT_MANAGER) {
+      const event = await Event.findByPk(booking.event_id, {
+        transaction,
+        attributes: ["created_by"],
+      });
+      if (!event || event.created_by !== userId) {
+        throw new AuthorizationError("Event managers cannot cancel bookings");
+      }
+    }
+
+    let refundResult = null;
+    if (booking.session_id) {
+      try {
+        refundResult = await paymentService.refundPayment(booking.session_id);
+        console.log(`[REFUND] Refund processed for booking ${bookingId}:`, refundResult);
+      } catch (refundError) {
+        console.error(`[REFUND] Refund failed for booking ${bookingId}:`, refundError.message);
+      }
+    }
+
+    await Booking.destroy({
+      where: { id: bookingId },
+      transaction,
+    });
+
+    return {
+      message: "Booking cancelled successfully",
+      refund: refundResult
+        ? {
+            status: refundResult.status,
+            amount: refundResult.amount / 100, 
+            refundId: refundResult.refundId,
+          }
+        : null,
+    };
+  });
+}
 }
 
 module.exports = new BookingService();

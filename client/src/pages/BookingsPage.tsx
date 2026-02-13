@@ -13,12 +13,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { UserRole, Booking } from "@/types";
-import { X, CalendarDays, History } from "lucide-react";
+import { X, CalendarDays, History, CheckCircle2 } from "lucide-react";
 import { EventSearchCombobox } from "@/components/common/searchEvent";
 import { BookingCard } from "@/components/bookings/BookingCard";
 
-export const BookingsPage = () => {
+interface RefundInfo {
+  status: string;
+  amount: number;
+  refundId: string;
+}
 
+export const BookingsPage = () => {
   const [page, setPage] = useState(1);
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [cancelBookingTitle, setCancelBookingTitle] = useState<string>("");
@@ -29,7 +34,8 @@ export const BookingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isProcessingStripeReturn, setIsProcessingStripeReturn] = useState(false);
   const [bookingProcessed, setBookingProcessed] = useState(false);
-
+  const [refundInfo, setRefundInfo] = useState<RefundInfo | null>(null);
+  const [showRefundInfo, setShowRefundInfo] = useState(false);
 
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
@@ -101,6 +107,15 @@ export const BookingsPage = () => {
   useEffect(() => {
     setBookingProcessed(false);
   }, [user]);
+
+  useEffect(() => {
+    if (showRefundInfo) {
+      const timer = setTimeout(() => {
+        setShowRefundInfo(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [showRefundInfo]);
 
   const filteredBookings = useMemo(() => {
     if (!data?.data?.bookings) return [];
@@ -191,10 +206,16 @@ export const BookingsPage = () => {
   const handleCancel = async () => {
     if (cancelId) {
       try {
-        await cancelBooking.mutateAsync(cancelId);
+        const result = await cancelBooking.mutateAsync(cancelId);
         await refetch();
         setCancelId(null);
         setCancelBookingTitle("");
+
+        // Show refund notification if refund was processed
+        if (result && typeof result === 'object' && 'data' in result && result.data && typeof result.data === 'object' && 'refund' in result.data) {
+          setRefundInfo((result.data as any).refund);
+          setShowRefundInfo(true);
+        }
       } catch {
         setCancelId(null);
         setCancelBookingTitle("");
@@ -451,11 +472,50 @@ export const BookingsPage = () => {
         onOpenChange={(open) => !open && setCancelId(null)}
         onConfirm={handleCancel}
         title="Cancel Booking"
-        description={`Are you sure you want to cancel your booking for "${cancelBookingTitle}"? This action cannot be undone.`}
+        description={`Are you sure you want to cancel your booking for "${cancelBookingTitle}"? A refund will be initiated to your original payment method.`}
         confirmText="Cancel Booking"
         confirmVariant="destructive"
         isLoading={cancelBooking.isPending}
       />
+
+      {showRefundInfo && refundInfo && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full">
+          <Card className="border-green-200 bg-green-50 shadow-xl">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-green-800 text-sm">
+                      Booking Cancelled & Refund Initiated
+                    </p>
+                    <p className="text-green-700 text-sm">
+                      ₹{Number(refundInfo.amount / 100).toFixed(2)} will be
+                      refunded to your original payment method within 5-10
+                      business days.
+                    </p>
+                    <p className="text-green-600 text-xs font-mono">
+                      Refund ID: {refundInfo.refundId}
+                    </p>
+                    <p className="text-green-600 text-xs">
+                      Status:{" "}
+                      {refundInfo.status === "succeeded"
+                        ? "Processed"
+                        : "Processing (3-5 days)"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowRefundInfo(false)}
+                  className="text-green-500 hover:text-green-800 shrink-0 mt-0.5"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

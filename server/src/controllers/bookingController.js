@@ -1,5 +1,8 @@
 const bookingService = require("../services/bookingService");
-const { createBookingSchema, getUserBookingsSchema } = require("../validators/bookingValidator");
+const {
+  createBookingSchema,
+  getUserBookingsSchema,
+} = require("../validators/bookingValidator");
 const {
   CreatedResponse,
   SuccessResponse,
@@ -15,18 +18,20 @@ const createBooking = async (req, res, next) => {
     });
 
     const { session_id } = req.body;
-    
+
     // Verify payment was successful
     const paymentInfo = await paymentService.verifyPaymentSession(session_id);
-    
+
     // Create booking in transaction after payment verification
     const booking = await bookingService.createBooking(
       validatedData,
       req.user.id,
-      paymentInfo.sessionId
+      paymentInfo.sessionId,
     );
 
-    return new CreatedResponse("Booking created successfully", booking).send(res);
+    return new CreatedResponse("Booking created successfully", booking).send(
+      res,
+    );
   } catch (error) {
     if (error.name === "ValidationError") {
       const errors = error.inner.reduce((acc, err) => {
@@ -57,11 +62,11 @@ const getUserBookings = async (req, res, next) => {
       req.user.role,
       eventId ?? undefined,
       page,
-      limit
+      limit,
     );
 
     return new SuccessResponse("Bookings retrieved successfully", result).send(
-      res
+      res,
     );
   } catch (error) {
     next(error);
@@ -73,11 +78,11 @@ const getBookingById = async (req, res, next) => {
     const booking = await bookingService.getBookingById(
       parseInt(req.params.id),
       req.user.id,
-      req.user.role
+      req.user.role,
     );
 
     return new SuccessResponse("Booking retrieved successfully", booking).send(
-      res
+      res,
     );
   } catch (error) {
     next(error);
@@ -86,13 +91,20 @@ const getBookingById = async (req, res, next) => {
 
 const cancelBooking = async (req, res, next) => {
   try {
+    const bookingId = parseInt(req.params.id);
     const result = await bookingService.cancelBooking(
-      parseInt(req.params.id),
+      bookingId,
       req.user.id,
-      req.user.role
+      req.user.role,
     );
 
-    return new SuccessResponse(result.message).send(res);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        refund: result.refund,
+      },
+    });
   } catch (error) {
     next(error);
   }

@@ -32,13 +32,14 @@ class PaymentService {
 
   async checkoutSession(eventId, customerEmail, quantity, attendeeName) {
     const eventData = await Event.findByPk(eventId);
-    
+
     if (!eventData) {
       throw new ConflictError("Event not found");
     }
 
     const stripeCheckoutSession = await StripeSessions.create({
-      success_url: "http://app.example.com/bookings?session_id={CHECKOUT_SESSION_ID}",
+      success_url:
+        "http://app.example.com/bookings?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "http://app.example.com/events",
       customer_email: customerEmail,
       line_items: [
@@ -47,9 +48,9 @@ class PaymentService {
             currency: "inr",
             unit_amount_decimal: Math.round(eventData.ticket_price * 100),
             product_data: {
-                name: eventData.title,
-                description: eventData.description,
-            }
+              name: eventData.title,
+              description: eventData.description,
+            },
           },
           quantity: quantity,
         },
@@ -59,15 +60,15 @@ class PaymentService {
         event_id: eventId.toString(),
         quantity: quantity.toString(),
         attendee_name: attendeeName,
-      }
+      },
     });
-    
+
     return stripeCheckoutSession;
   }
 
   async verifyPaymentSession(sessionId) {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-    
+
     if (session.payment_status !== "paid") {
       throw new ConflictError("Payment not completed");
     }
@@ -76,7 +77,33 @@ class PaymentService {
       sessionId: session.id,
       paymentStatus: session.payment_status,
       amount: session.amount_total,
-      metadata: session.metadata
+      metadata: session.metadata,
+    };
+  }
+
+  async refundPayment(sessionId) {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (!session) {
+      throw new ConflictError("Stripe session not found");
+    }
+
+    if (session.payment_status !== "paid") {
+      throw new ConflictError("No payment found to refund");
+    }
+
+    const refund = await stripe.refunds.create({
+      payment_intent: session.payment_intent,
+    });
+
+    if (refund.status !== "succeeded" && refund.status !== "pending") {
+      throw new ConflictError(`Refund failed with status: ${refund.status}`);
+    }
+
+    return {
+      refundId: refund.id,
+      status: refund.status,
+      amount: refund.amount,
     };
   }
 }
