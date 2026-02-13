@@ -3,16 +3,33 @@ const { newEnforcer } = require("casbin");
 const { verifyToken } = require("../utils/jwtHelper");
 const { AuthenticationError, AuthorizationError } = require("../utils/errors");
 
-const MODEL_PATH = path.join(__dirname, "../policies/model.conf");
-const POLICY_PATH = path.join(__dirname, "../policies/policy.csv");
+const MODEL_PATH = path.join(__dirname, "../../policies/model.conf");
+const POLICY_PATH = path.join(__dirname, "../../policies/policy.csv");
 
 let enforcerInstance = null;
-
 const getEnforcer = async () => {
   if (!enforcerInstance) {
     enforcerInstance = await newEnforcer(MODEL_PATH, POLICY_PATH);
   }
   return enforcerInstance;
+};
+
+const methodToAction = (method) => {
+  const map = {
+    GET:    "read",
+    POST:   "create",
+    PUT:    "update",
+    PATCH:  "update",
+    DELETE: "delete",
+  };
+  return map[method.toUpperCase()] || method.toLowerCase();
+};
+
+
+const extractResource = (req) => {
+  const base = req.baseUrl || "";          
+  const segments = base.split("/").filter(Boolean);
+  return segments[segments.length - 1]; 
 };
 
 const authenticate = (req, res, next) => {
@@ -25,7 +42,7 @@ const authenticate = (req, res, next) => {
     const hasToken = authHeader && authHeader.startsWith("Bearer ");
 
     if (isPublicGet && !hasToken) {
-      return next();
+      return next(); // allow through without user
     }
 
     if (!hasToken) {
@@ -36,9 +53,9 @@ const authenticate = (req, res, next) => {
     const decoded = verifyToken(token);
 
     req.user = {
-      id: decoded.id,
+      id:    decoded.id,
       email: decoded.email,
-      role: decoded.role,
+      role:  decoded.role,  // e.g. "admin", "event_manager", "customer"
     };
 
     next();
@@ -53,50 +70,37 @@ const authenticate = (req, res, next) => {
   }
 };
 
-const authorize = (resource, action) => {
+
+const authorize = () => {
   return async (req, res, next) => {
     try {
       if (!req.user) {
         return next(new AuthenticationError("User not authenticated"));
       }
 
-      const e = await getEnforcer();
-      const role = req.user.role;
+      const enforcer  = await getEnforcer();
+      const role      = req.user.role;                // "admin"
+      const resource  = extractResource(req);         // "events"
+      const action    = methodToAction(req.method);   // "create"
 
-      const resolvedAction =
-        action || httpMethodToAction(req.method);
+      console.log(`[AUTHORIZE] role=${role} | resource=${resource} | action=${action}`);
 
-      console.log(
-        `[PEP] Checking policy: role=${role}, resource=${resource}, action=${resolvedAction}`
-      );
-
-      const allowed = await e.enforce(role, resource, resolvedAction);
+      const allowed = await enforcer.enforce(role, resource, action);
 
       if (!allowed) {
         return next(
           new AuthorizationError(
-            `Access denied. Role '${role}' cannot perform '${resolvedAction}' on '${resource}'`
+            `Access denied: '${role}' cannot '${action}' on '${resource}'`
           )
         );
       }
 
       next();
     } catch (error) {
-      console.error("[PEP] Policy enforcement error:", error);
+      console.error("[AUTHORIZE] Error:", error);
       next(error);
     }
   };
-};
-
-const httpMethodToAction = (method) => {
-  const map = {
-    GET: "read",
-    POST: "create",
-    PUT: "update",
-    PATCH: "update",
-    DELETE: "delete",
-  };
-  return map[method.toUpperCase()] || method.toLowerCase();
 };
 
 module.exports = { authenticate, authorize };

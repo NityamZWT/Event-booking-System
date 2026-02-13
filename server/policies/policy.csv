@@ -1,13 +1,37 @@
-p, admin, events, create
-p, admin, events, read
-p, admin, events, update
-p, admin, events, delete
+# EVENTS
+p, ADMIN, events, create
+p, ADMIN, events, read
+p, ADMIN, events, update
+p, ADMIN, events, delete
 
-p, event_manager, events, create
-p, event_manager, events, read
-p, event_manager, events, update
+p, EVENT_MANAGER, events, create
+p, EVENT_MANAGER, events, read
+p, EVENT_MANAGER, events, update
 
-p, user, events, read
+p, CUSTOMER,      events, read
 
-g, admin, user
-g, event_manager, user
+# BOOKINGS
+p, ADMIN,         bookings, create
+p, ADMIN,         bookings, read
+p, ADMIN,         bookings, delete
+
+p, EVENT_MANAGER, bookings, create
+p, EVENT_MANAGER, bookings, read
+
+p, CUSTOMER,      bookings, create
+p, CUSTOMER,      bookings, read
+p, CUSTOMER,      bookings, delete
+
+# ANALYTICS
+p, ADMIN,         analytics, read
+p, EVENT_MANAGER, analytics, read
+
+# USERS
+p, ADMIN,         users, read
+p, ADMIN,         users, delete
+p, ADMIN,         users, update
+
+# PAYMENTS
+p, ADMIN,         payments, create
+p, EVENT_MANAGER, payments, create
+p, CUSTOMER,      payments, create

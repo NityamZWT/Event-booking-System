@@ -41,7 +41,7 @@ class BookingService {
         });
 
         if (!event) {
-          throw new Error(`Event with ID ${event_id} not found`);
+          throw new NotFoundError(`Event with ID ${bookingData.event_id} not found`);
         }
 
         const totalBookings = await Booking.sum("quantity", {
