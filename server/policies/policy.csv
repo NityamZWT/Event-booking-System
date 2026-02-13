@@ -1,0 +1,13 @@
+p, admin, events, create
+p, admin, events, read
+p, admin, events, update
+p, admin, events, delete
+
+p, event_manager, events, create
+p, event_manager, events, read
+p, event_manager, events, update
+
+p, user, events, read
+
+g, admin, user
+g, event_manager, user

@@ -22,7 +22,14 @@ const createBookingSchema = yup.object({
   booking_amount: yup
     .number()
     .min(0, 'Booking amount must be greater than or equal to 0')
-    .required('Booking amount is required')
+    .required('Booking amount is required'),
+   session_id: yup
+    .string()
+    .trim()
+    .min(10, 'Session ID must be at least 10 characters')
+    .max(255, 'Session ID cannot exceed 255 characters')
+    .required('Session ID is required')
+    .matches(/^cs_(test_|live_)/, 'Invalid session ID format'),
 });
 
 const getUserBookingsSchema = yup.object({

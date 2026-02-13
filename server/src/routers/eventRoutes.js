@@ -3,7 +3,7 @@ const eventController = require("../controllers/eventController");
 const { authenticate, authorize } = require("../middlewares/authMiddleware");
 const { UserRole } = require("../constants/common.types");
 const imageUploaderasync = require("../middlewares/imageUploaderMiddleware");
-const upload = require("../lib/multer");
+// const upload = require("../lib/multer");
 
 const router = express.Router();
 

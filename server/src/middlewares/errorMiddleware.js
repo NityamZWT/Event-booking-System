@@ -90,7 +90,7 @@ const errorHandler = (err, req, res, next) => {
 
   const internalError = new InternalServerError(
     process.env.NODE_ENV === "production"
-      ? "Internal server error"
+      ? err.message
       : err.message
   );
 

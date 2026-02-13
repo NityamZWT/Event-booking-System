@@ -15,12 +15,12 @@ class BookingService {
       const d1 = new Date(
         date1.getFullYear(),
         date1.getMonth(),
-        date1.getDate()
+        date1.getDate(),
       );
       const d2 = new Date(
         date2.getFullYear(),
         date2.getMonth(),
-        date2.getDate()
+        date2.getDate(),
       );
       return d1 < d2;
     } catch (error) {
@@ -29,7 +29,7 @@ class BookingService {
     }
   }
 
-  async createBooking(bookingData, userId) {
+  async createBooking(bookingData, userId, sessionId) {
     return await sequelize.transaction(
       {
         isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
@@ -41,7 +41,7 @@ class BookingService {
         });
 
         if (!event) {
-          throw new NotFoundError("Event not found");
+          throw new Error(`Event with ID ${event_id} not found`);
         }
 
         const totalBookings = await Booking.sum("quantity", {
@@ -55,7 +55,7 @@ class BookingService {
         if (bookedTickets + requestedQuantity > event.capacity) {
           const availableTickets = event.capacity - bookedTickets;
           throw new ConflictError(
-            `Insufficient capacity. Only ${availableTickets} tickets available`
+            `Insufficient capacity. Only ${availableTickets} tickets available`,
           );
         }
 
@@ -66,8 +66,8 @@ class BookingService {
         ) {
           throw new ConflictError(
             `Payment amount mismatch. Expected ${bookingAmount.toFixed(
-              2
-            )} for quantity ${requestedQuantity}`
+              2,
+            )} for quantity ${requestedQuantity}`,
           );
         }
         const booking = await Booking.create(
@@ -77,8 +77,9 @@ class BookingService {
             attendee_name: bookingData.attendee_name,
             quantity: requestedQuantity,
             booking_amount: bookingAmount,
+            session_id: sessionId,
           },
-          { transaction }
+          { transaction },
         );
 
         const createdBooking = await Booking.findByPk(booking.id, {
@@ -104,7 +105,7 @@ class BookingService {
             location: createdBooking.event.location,
           },
         };
-      }
+      },
     );
   }
 

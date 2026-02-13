@@ -1,7 +1,11 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppSelector } from "@/store/hook";
-import { useBookings, useCancelBooking } from "@/hooks/useBooking";
+import {
+  useBookings,
+  useCancelBooking,
+  useCreateBooking,
+} from "@/hooks/useBooking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { UserRole, Booking } from "@/types";
-import {
-  X,
-  CalendarDays,
-  History,
-} from "lucide-react";
+import { X, CalendarDays, History } from "lucide-react";
 import { EventSearchCombobox } from "@/components/common/searchEvent";
 import { BookingCard } from "@/components/bookings/BookingCard";
 
@@ -25,6 +25,9 @@ export const BookingsPage = () => {
   const [selectedEvent, setSelectedEvent] = useState<string>("all");
   const [selectedEventName, setSelectedEventName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isProcessingStripeReturn, setIsProcessingStripeReturn] = useState(false);
+  const [bookingProcessed, setBookingProcessed] = useState(false);
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
   const { data, isLoading, error, refetch } = useBookings({
@@ -33,6 +36,101 @@ export const BookingsPage = () => {
     eventId: selectedEvent !== "all" ? parseInt(selectedEvent) : undefined,
   });
   const cancelBooking = useCancelBooking();
+  const createBooking = useCreateBooking();
+
+  // Handle booking creation after Stripe payment success
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    
+    // Skip if no session_id, no user, or already processed
+    if (!sessionId || !user || bookingProcessed) {
+      return;
+    }
+
+    const processBooking = async () => {
+      // Mark as processing
+      setBookingProcessed(true);
+      setIsProcessingStripeReturn(true);
+
+      try {
+        // Get the stored booking data from localStorage
+        const bookingData = localStorage.getItem("pendingBooking");
+        if (!bookingData) {
+          console.error("No pending booking data found");
+          setIsProcessingStripeReturn(false);
+          return;
+        }
+
+        const { event_id, quantity, attendee_name, booking_amount } =
+          JSON.parse(bookingData);
+
+        console.log("Creating booking with data:", {
+          event_id,
+          attendee_name,
+          quantity,
+          booking_amount,
+          session_id: sessionId,
+        });
+
+        // Create the booking with the session_id
+        await createBooking.mutateAsync({
+          event_id,
+          attendee_name,
+          quantity: Number(quantity),
+          booking_amount,
+          session_id: sessionId,
+        });
+
+        // Clear the stored booking data
+        localStorage.removeItem("pendingBooking");
+
+        // Clear the session_id from URL immediately
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete("session_id");
+        setSearchParams(newSearchParams, { replace: true });
+
+        // Refetch bookings
+        await refetch();
+
+        console.log("Booking created successfully");
+        
+        // Optional: Show success message
+        // toast.success("Booking confirmed successfully!");
+      } catch (error) {
+        console.error("Error creating booking:", error);
+        
+        // Clear the stored booking data on error
+        localStorage.removeItem("pendingBooking");
+        
+        // Allow retry by resetting the processed state
+        setBookingProcessed(false);
+        
+        // Optional: Show error message
+        // toast.error("Failed to create booking");
+      } finally {
+        setIsProcessingStripeReturn(false);
+      }
+    };
+
+    processBooking();
+  }, [searchParams, user, createBooking, refetch, setSearchParams, bookingProcessed]);
+
+  // Show loading while processing Stripe return
+  if (isProcessingStripeReturn) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <LoadingSpinner />
+          <p className="text-muted-foreground">Confirming your booking...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Reset bookingProcessed when user changes (for new sessions)
+  useEffect(() => {
+    setBookingProcessed(false);
+  }, [user]);
 
   const handleEventSelect = (event: any) => {
     if (event) {
@@ -75,9 +173,13 @@ export const BookingsPage = () => {
     let filtered = data.data.bookings;
 
     if (activeTab === "upcoming") {
-      filtered = filtered.filter((booking: Booking) => !booking.event?.pastEvent);
+      filtered = filtered.filter(
+        (booking: Booking) => !booking.event?.pastEvent,
+      );
     } else {
-      filtered = filtered.filter((booking: Booking) => booking.event?.pastEvent);
+      filtered = filtered.filter(
+        (booking: Booking) => booking.event?.pastEvent,
+      );
     }
 
     if (searchQuery.trim()) {
@@ -86,7 +188,7 @@ export const BookingsPage = () => {
         (booking: Booking) =>
           booking.attendee_name.toLowerCase().includes(q) ||
           booking.event?.title.toLowerCase().includes(q) ||
-          booking.event?.location.toLowerCase().includes(q)
+          booking.event?.location.toLowerCase().includes(q),
       );
     }
 
@@ -99,18 +201,34 @@ export const BookingsPage = () => {
     if (!data?.data?.bookings) return { upcoming: 0, past: 0 };
 
     const upcoming = data.data.bookings.filter(
-      (booking: Booking) => !booking.event?.pastEvent
+      (booking: Booking) => !booking.event?.pastEvent,
     ).length;
-    
+
     const past = data.data.bookings.filter(
-      (booking: Booking) => booking.event?.pastEvent
+      (booking: Booking) => booking.event?.pastEvent,
     ).length;
 
     return { upcoming, past };
   }, [data?.data?.bookings]);
 
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <div>Error loading bookings</div>;
+  // Add this check - if still loading and we have user
+  if (isLoading && user) {
+    return <LoadingSpinner />;
+  }
+  
+  if (error) {
+    console.error("Error loading bookings:", error);
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-destructive mb-2">Error loading bookings</div>
+          <Button variant="outline" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const bookings = filteredBookings;
   const pagination: { totalPages?: number } = data?.data?.pagination || {};
@@ -128,7 +246,12 @@ export const BookingsPage = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="upcoming" value={activeTab} onValueChange={(value) => setActiveTab(value as "upcoming" | "past")} className="space-y-4">
+      <Tabs
+        defaultValue="upcoming"
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as "upcoming" | "past")}
+        className="space-y-4"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <TabsList>
             <TabsTrigger value="upcoming" className="flex items-center gap-2">
@@ -167,19 +290,21 @@ export const BookingsPage = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <div className="w-full">
-              <EventSearchCombobox
-                value={selectedEvent !== "all" ? selectedEvent : undefined}
-                onSelect={handleEventSelect}
-                placeholder="Select an event to filter..."
-                searchPlaceholder="Search events by name..."
-                emptyMessage="No events found. Try a different search."
-                showSelectedInTrigger={true}
-                className="w-full"
-              />
+          {bookings.length === 0 ? null : (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="w-full">
+                <EventSearchCombobox
+                  value={selectedEvent !== "all" ? selectedEvent : undefined}
+                  onSelect={handleEventSelect}
+                  placeholder="Select an event to filter..."
+                  searchPlaceholder="Search events by name..."
+                  emptyMessage="No events found. Try a different search."
+                  showSelectedInTrigger={true}
+                  className="w-full"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {hasActiveFilters && (
             <div className="flex flex-wrap gap-2 items-center">
@@ -216,7 +341,8 @@ export const BookingsPage = () => {
 
           <div className="text-sm text-muted-foreground">
             Showing {bookings.length} of {tabCounts[activeTab]}{" "}
-            {activeTab === "upcoming" ? "upcoming" : "past"} booking{bookings.length !== 1 ? "s" : ""}
+            {activeTab === "upcoming" ? "upcoming" : "past"} booking
+            {bookings.length !== 1 ? "s" : ""}
             {hasActiveFilters && " (filtered)"}
           </div>
         </div>

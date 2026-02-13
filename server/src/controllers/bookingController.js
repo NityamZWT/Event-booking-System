@@ -5,6 +5,7 @@ const {
   SuccessResponse,
 } = require("../utils/responseHandler");
 const { ValidationError } = require("../utils/errors");
+const paymentService = require("../services/paymentService");
 
 const createBooking = async (req, res, next) => {
   try {
@@ -13,14 +14,19 @@ const createBooking = async (req, res, next) => {
       stripUnknown: true,
     });
 
-    const booking = await bookingService.createBooking( 
+    const { session_id } = req.body;
+    
+    // Verify payment was successful
+    const paymentInfo = await paymentService.verifyPaymentSession(session_id);
+    
+    // Create booking in transaction after payment verification
+    const booking = await bookingService.createBooking(
       validatedData,
-      req.user.id
+      req.user.id,
+      paymentInfo.sessionId
     );
 
-    return new CreatedResponse("Booking created successfully", booking).send(
-      res
-    );
+    return new CreatedResponse("Booking created successfully", booking).send(res);
   } catch (error) {
     if (error.name === "ValidationError") {
       const errors = error.inner.reduce((acc, err) => {

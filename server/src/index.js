@@ -15,6 +15,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "http://127.0.0.1:3000",
+  "http://app.example.com",
 ];
 
 app.use(
@@ -23,7 +24,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(null, false);
       }
     },
     credentials: true,
@@ -33,9 +34,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
+// if (process.env.NODE_ENV === "development") {
+//   app.use(morgan("dev"));
+// }
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
@@ -74,7 +75,7 @@ const startServer = async () => {
 const gracefulShutdown = async (signal) => {
   try {
     await sequelize.close();
-    console.log(`${signal}`);
+    console.log(signal);
     process.exit(0);
   } catch (error) {
     process.exit(1);
