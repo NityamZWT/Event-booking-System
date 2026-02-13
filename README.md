@@ -82,8 +82,8 @@ C:\Windows\System32\drivers\etc\
 
 ## Application URLs
 
-* **Frontend:** [http://localhost:3000](http://localhost:3000)
-* **Backend API:** [http://localhost:5000](http://localhost:5000)
+* **Frontend:** [http://app.example.com](http://app.example.com)
+* **Backend API:** [http://api.example.com](http://api.example.com)
 
 ---
 
