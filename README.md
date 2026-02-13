@@ -75,30 +75,15 @@ When the application starts, **Sequelize seeders automatically run** and populat
 
 ---
 
-### Users Seeder
+### URL Setup
 
-The users seeder creates **default users with roles**:
+```bash
+C:\Windows\System32\drivers\etc\
 
-| Role          | Email                                                           | Password       |
-| ------------- | --------------------------------------------------------------- | -------------- |
-| ADMIN         | [alice.admin@example.com](mailto:alice.admin@example.com)       | `Admin@123`    |
-| EVENT_MANAGER | [bob.manager@example.com](mailto:bob.manager@example.com)       | `Manager@123`  |
-| EVENT_MANAGER | [mike.manager@example.com](mailto:mike.manager@example.com)     | `Manager@123`  |
-| CUSTOMER      | [sobby.customer@example.com](mailto:sobby.customer@example.com) | `Customer@123` |
-| CUSTOMER      | [jenny.customer@example.com](mailto:jenny.customer@example.com) | `Customer@123` |
-
-> Passwords are securely hashed using **bcrypt**.
-
----
-
-### Events Seeder
-
-The events seeder creates **sample events**, linked to existing users:
-
-* Tech Conference 2025
-* Music Festival 2025
-* Startup Meetup 2026
-* Art Expo 2026
+# added for local testing of nginx as reverse proxy 
+127.0.0.1 app.example.com
+127.0.0.1 api.example.com
+```
 
 ## Application URLs
 
