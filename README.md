@@ -69,11 +69,6 @@ docker-compose up --build
 
 ---
 
-## Database Seeders (Important)
-
-When the application starts, **Sequelize seeders automatically run** and populate the database with initial data.
-
----
 
 ### URL Setup
 
