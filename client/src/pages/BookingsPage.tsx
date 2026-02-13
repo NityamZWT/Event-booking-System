@@ -477,45 +477,6 @@ export const BookingsPage = () => {
         confirmVariant="destructive"
         isLoading={cancelBooking.isPending}
       />
-
-      {showRefundInfo && refundInfo && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full">
-          <Card className="border-green-200 bg-green-50 shadow-xl">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
-                  <div className="space-y-1">
-                    <p className="font-semibold text-green-800 text-sm">
-                      Booking Cancelled & Refund Initiated
-                    </p>
-                    <p className="text-green-700 text-sm">
-                      ₹{Number(refundInfo.amount / 100).toFixed(2)} will be
-                      refunded to your original payment method within 5-10
-                      business days.
-                    </p>
-                    <p className="text-green-600 text-xs font-mono">
-                      Refund ID: {refundInfo.refundId}
-                    </p>
-                    <p className="text-green-600 text-xs">
-                      Status:{" "}
-                      {refundInfo.status === "succeeded"
-                        ? "Processed"
-                        : "Processing (3-5 days)"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowRefundInfo(false)}
-                  className="text-green-500 hover:text-green-800 shrink-0 mt-0.5"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 };

@@ -6,6 +6,7 @@ const {
 } = require("../utils/errors");
 const { Transaction } = require("sequelize");
 const { UserRole } = require("../constants/common.types");
+const paymentService = require("./paymentService");
 
 const { Booking, Event, User, sequelize } = db;
 

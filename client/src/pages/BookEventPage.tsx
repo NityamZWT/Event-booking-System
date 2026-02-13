@@ -31,13 +31,12 @@ export const BookEventPage = () => {
     const bookingAmount = Number(event?.ticket_price ?? 0) * values.quantity;
 
     try {
-      // Step 1: Create checkout session
+
       const checkoutResponse = await axios.post("/payments/checkout-session", {
         event_id: parseInt(id!),
         quantity: values.quantity,
       });
 
-      // Step 2: Store booking data in sessionStorage for after payment
       localStorage.setItem(
         "pendingBooking",
         JSON.stringify({
@@ -48,7 +47,6 @@ export const BookEventPage = () => {
         }),
       );
 
-      // Step 3: Redirect to Stripe checkout
       if (checkoutResponse?.data?.data?.url) {
         window.location.href = checkoutResponse.data.data.url;
       }
@@ -58,7 +56,6 @@ export const BookEventPage = () => {
     }
   };
 
-  // Handle return from Stripe after payment
   const handleStripeReturn = async () => {
     const sessionId = searchParams.get("session_id");
     const pendingBooking = sessionStorage.getItem("pendingBooking");
@@ -79,7 +76,6 @@ export const BookEventPage = () => {
     }
   };
 
-  // Check if returning from Stripe
   if (searchParams.get("session_id")) {
     handleStripeReturn();
     return <LoadingSpinner />;
