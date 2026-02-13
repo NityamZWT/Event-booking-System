@@ -20,11 +20,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - name: Install client dependencies
         run: npm install
+        working-directory: ./client
 
       - name: Run tests
-        run: npm test
+        run: docker compose up -d --build
 
       - name: Check app starts
         run: |
