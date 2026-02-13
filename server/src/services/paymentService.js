@@ -49,7 +49,7 @@ class PaymentService {
             unit_amount_decimal: Math.round(eventData.ticket_price * 100),
             product_data: {
               name: eventData.title,
-              description: eventData.description,
+              description: eventData.description && eventData.description.trim() !== "" ? eventData.description : undefined,
             },
           },
           quantity: quantity,

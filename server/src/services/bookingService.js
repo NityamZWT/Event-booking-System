@@ -256,9 +256,9 @@ async cancelBooking(bookingId, userId, userRole) {
     if (booking.session_id) {
       try {
         refundResult = await paymentService.refundPayment(booking.session_id);
-        console.log(`[REFUND] Refund processed for booking ${bookingId}:`, refundResult);
+        console.log(`Refund processed for booking ${bookingId}:`, refundResult);
       } catch (refundError) {
-        console.error(`[REFUND] Refund failed for booking ${bookingId}:`, refundError.message);
+        console.error(`Refund failed for booking ${bookingId}:`, refundError.message);
       }
     }
 
@@ -268,7 +268,7 @@ async cancelBooking(bookingId, userId, userRole) {
     });
 
     return {
-      message: "Booking cancelled successfully",
+      message: "Booking cancelled successfully and refund processed if applicable",
       refund: refundResult
         ? {
             status: refundResult.status,
