@@ -7,7 +7,7 @@ const {
 } = require("../utils/errors");
 const { UserRole } = require("../constants/common.types");
 
-const { Event, User, Booking, sequelize } = db;
+const { Event, Booking, sequelize } = db;
 const cloudinary = require("../lib/cloudinary");
 
 class EventService {

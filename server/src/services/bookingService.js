@@ -6,6 +6,7 @@ const {
 } = require("../utils/errors");
 const { Transaction } = require("sequelize");
 const { UserRole } = require("../constants/common.types");
+const paymentService = require("./paymentService");
 
 const { Booking, Event, User, sequelize } = db;
 
@@ -15,12 +16,12 @@ class BookingService {
       const d1 = new Date(
         date1.getFullYear(),
         date1.getMonth(),
-        date1.getDate()
+        date1.getDate(),
       );
       const d2 = new Date(
         date2.getFullYear(),
         date2.getMonth(),
-        date2.getDate()
+        date2.getDate(),
       );
       return d1 < d2;
     } catch (error) {
@@ -29,7 +30,7 @@ class BookingService {
     }
   }
 
-  async createBooking(bookingData, userId) {
+  async createBooking(bookingData, userId, sessionId) {
     return await sequelize.transaction(
       {
         isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
@@ -41,7 +42,7 @@ class BookingService {
         });
 
         if (!event) {
-          throw new NotFoundError("Event not found");
+          throw new NotFoundError(`Event with ID ${bookingData.event_id} not found`);
         }
 
         const totalBookings = await Booking.sum("quantity", {
@@ -55,7 +56,7 @@ class BookingService {
         if (bookedTickets + requestedQuantity > event.capacity) {
           const availableTickets = event.capacity - bookedTickets;
           throw new ConflictError(
-            `Insufficient capacity. Only ${availableTickets} tickets available`
+            `Insufficient capacity. Only ${availableTickets} tickets available`,
           );
         }
 
@@ -66,8 +67,8 @@ class BookingService {
         ) {
           throw new ConflictError(
             `Payment amount mismatch. Expected ${bookingAmount.toFixed(
-              2
-            )} for quantity ${requestedQuantity}`
+              2,
+            )} for quantity ${requestedQuantity}`,
           );
         }
         const booking = await Booking.create(
@@ -77,8 +78,9 @@ class BookingService {
             attendee_name: bookingData.attendee_name,
             quantity: requestedQuantity,
             booking_amount: bookingAmount,
+            session_id: sessionId,
           },
-          { transaction }
+          { transaction },
         );
 
         const createdBooking = await Booking.findByPk(booking.id, {
@@ -104,7 +106,7 @@ class BookingService {
             location: createdBooking.event.location,
           },
         };
-      }
+      },
     );
   }
 
@@ -225,40 +227,58 @@ class BookingService {
     };
   }
 
-  async cancelBooking(bookingId, userId, userRole) {
-    return await sequelize.transaction(async (transaction) => {
-      const booking = await Booking.findByPk(bookingId, {
-        transaction,
-        attributes: ["id", "user_id", "event_id"],
-      });
-
-      if (!booking) {
-        throw new NotFoundError("Booking not found");
-      }
-
-      if (userRole === UserRole.CUSTOMER && booking.user_id !== userId) {
-        throw new AuthorizationError("You can only cancel your own bookings");
-      }
-
-      if (userRole === UserRole.EVENT_MANAGER) {
-        const event = await Event.findByPk(booking.event_id, {
-          transaction,
-          attributes: ["created_by"],
-        });
-
-        if (!event || event.created_by !== userId) {
-          throw new AuthorizationError("Event managers cannot cancel bookings");
-        }
-      }
-
-      await Booking.destroy({
-        where: { id: bookingId },
-        transaction,
-      });
-
-      return { message: "Booking cancelled successfully" };
+async cancelBooking(bookingId, userId, userRole) {
+  return await sequelize.transaction(async (transaction) => {
+    const booking = await Booking.findByPk(bookingId, {
+      transaction,
+      attributes: ["id", "user_id", "event_id", "session_id", "booking_amount"],
     });
-  }
+
+    if (!booking) {
+      throw new NotFoundError("Booking not found");
+    }
+
+    if (userRole === UserRole.CUSTOMER && booking.user_id !== userId) {
+      throw new AuthorizationError("You can only cancel your own bookings");
+    }
+
+    if (userRole === UserRole.EVENT_MANAGER) {
+      const event = await Event.findByPk(booking.event_id, {
+        transaction,
+        attributes: ["created_by"],
+      });
+      if (!event || event.created_by !== userId) {
+        throw new AuthorizationError("Event managers cannot cancel bookings");
+      }
+    }
+
+    let refundResult = null;
+    if (booking.session_id) {
+      try {
+        refundResult = await paymentService.refundPayment(booking.session_id);
+        console.log(`Refund processed for booking ${bookingId}:`, refundResult);
+      } catch (refundError) {
+        console.error(`Refund failed for booking ${bookingId}:`, refundError.message);
+      }
+    }
+
+    await Booking.destroy({
+      where: { id: bookingId },
+      transaction,
+    });
+
+    return {
+      message: "Booking cancelled successfully and refund processed if applicable",
+      refund: refundResult
+        ? {
+            status: refundResult.status,
+            amount: refundResult.amount / 100, 
+            refundId: refundResult.refundId,
+          }
+        : null,
+    };
+  });
+}
 }
 
 module.exports = new BookingService();

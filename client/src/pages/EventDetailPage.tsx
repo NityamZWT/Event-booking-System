@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Formik, Form, Field } from "formik";
 import { useEvent } from "@/hooks/useEvents";
 import { useCreateBooking } from "@/hooks/useBooking";
+import { useCreateCheckoutSession } from "@/hooks/usePayment";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import {
   formatDate,
@@ -37,6 +38,7 @@ export const EventDetailPage = () => {
   const navigate = useNavigate();
   const { data, isLoading, error } = useEvent(id ? parseInt(id) : null);
   const createBooking = useCreateBooking();
+  const createCheckoutSession = useCreateCheckoutSession();
   const { user, isAuthenticated } = useAppSelector((s) => s.auth);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteEvent = useDeleteEvent();
@@ -229,15 +231,29 @@ export const EventDetailPage = () => {
                         validationSchema={bookingSchema}
                         onSubmit={async (values) => {
                           try {
-                            await createBooking.mutateAsync({
+                            // Store booking data for later use after payment
+                            const bookingData = {
                               event_id: parseInt(id!),
                               attendee_name: values.attendee_name,
                               quantity: values.quantity,
                               booking_amount:
                                 Number(event?.ticket_price ?? 0) *
                                 values.quantity,
+                            };
+                            localStorage.setItem(
+                              "pendingBooking",
+                              JSON.stringify(bookingData)
+                            );
+
+                            // Step 1: Create Stripe checkout session
+                            const paymentResponse = await createCheckoutSession.mutateAsync({
+                              eventId: parseInt(id!),
+                              quantity: values.quantity,
+                              attendeeName: values.attendee_name,
                             });
-                            navigate("/bookings");
+
+                            // Step 2: Redirect to Stripe checkout
+                            window.location.href = paymentResponse.data.url;
                           } catch {
                             return;
                           }
@@ -355,14 +371,14 @@ export const EventDetailPage = () => {
                               </Button>
                               <Button
                                 type="submit"
-                                disabled={isSubmitting || createBooking.isPending}
+                                disabled={isSubmitting || createCheckoutSession.isPending}
                               >
-                                {isSubmitting || createBooking.isPending ? (
+                                {isSubmitting || createCheckoutSession.isPending ? (
                                   <>
                                     <span className="mr-2">Processing...</span>
                                   </>
                                 ) : (
-                                  "Confirm Booking"
+                                  "Proceed to Payment"
                                 )}
                               </Button>
                             </div>

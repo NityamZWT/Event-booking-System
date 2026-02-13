@@ -19,4 +19,5 @@ export interface CreateBookingData {
   attendee_name: string;
   booking_amount: number;
   quantity: number;
+  session_id: string;
 }

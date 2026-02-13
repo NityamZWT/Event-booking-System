@@ -58,14 +58,26 @@ const errorHandler = (err, req, res, next) => {
     }
 
     if (err.name === "SequelizeForeignKeyConstraintError") {
-      const dbError = new DatabaseError(
-        "Invalid reference to related resource"
-      );
-      return res.status(dbError.statusCode).json({
+      console.error("SequelizeForeignKeyConstraintError:", err);
+      const dbError = new DatabaseError("Invalid reference to related resource");
+
+      const response = {
         success: false,
         type: dbError.type,
         message: dbError.message,
-      });
+      };
+
+      if (process.env.NODE_ENV !== "production") {
+        response.errorDetails = {
+          table: err.table || null,
+          fields: err.fields || null,
+          value: err.value || null,
+          index: err.index || null,
+          parent: err.parent ? err.parent.message : null,
+        };
+      }
+
+      return res.status(dbError.statusCode).json(response);
     }
 
     const dbError = new DatabaseError("Database operation failed");
@@ -90,7 +102,7 @@ const errorHandler = (err, req, res, next) => {
 
   const internalError = new InternalServerError(
     process.env.NODE_ENV === "production"
-      ? "Internal server error"
+      ? err.message
       : err.message
   );
 

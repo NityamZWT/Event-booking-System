@@ -94,10 +94,6 @@ export const EditEventPage = () => {
       fd.append("retain_images", JSON.stringify(retainIds));
       fd.append("remove_images", JSON.stringify(removeImages));
 
-      console.log("Submitting with retain_ids:", retainIds);
-      console.log("Submitting with remove_images:", removeImages);
-      console.log("New files to upload:", newFiles.length);
-
       newFiles.forEach((file) => {
         fd.append("images", file);
       });

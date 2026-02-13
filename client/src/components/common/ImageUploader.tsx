@@ -71,7 +71,6 @@ const ImageUploader: React.FC<Props> = ({
   }, [existingImages]);
 
   useEffect(() => {
-    // Filter out images marked for removal
     const activeExistingImages = retainedExistingImages.filter(
       (img) =>
         !imagesToRemove.includes(img.public_id || img.id?.toString() || "")
@@ -92,7 +91,6 @@ const ImageUploader: React.FC<Props> = ({
     if (setFieldValue && name) {
       setFieldValue(name, images);
       setFieldValue("retain_images", retainIds);
-      // Also track images to be removed
       const allExistingIds = retainedExistingImages
         .map((img) => img.public_id || img.id)
         .filter(Boolean);
@@ -267,7 +265,6 @@ const ImageUploader: React.FC<Props> = ({
     setError("");
 
     setInputKey(Date.now());
-
   };
 
   const clearNewFiles = () => {
@@ -443,8 +440,7 @@ const ImageUploader: React.FC<Props> = ({
               <h3 className="font-semibold">{label}</h3>
               <p className="text-sm text-muted-foreground">{description}</p>
               <p className="text-xs text-muted-foreground">
-                Supported: JPG, JPEG, PNG • Max:{" "}
-                {formatFileSize(maxFileSize)}
+                Supported: JPG, JPEG, PNG • Max: {formatFileSize(maxFileSize)}
               </p>
             </div>
             <Button type="button" variant="outline">

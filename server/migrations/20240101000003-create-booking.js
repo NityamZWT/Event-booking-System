@@ -41,6 +41,12 @@ module.exports = {
         allowNull: false,
         defaultValue: 1,
       },
+      // ADD THIS: session_id field
+      session_id: {
+        type: Sequelize.STRING(255),
+        allowNull: false,
+        unique: true, // Important for preventing duplicate bookings
+      },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -67,6 +73,12 @@ module.exports = {
 
     await queryInterface.addIndex('bookings', ['user_id', 'event_id'], {
       name: 'bookings_user_event_index',
+    });
+
+    // ADD THIS: Index for session_id
+    await queryInterface.addIndex('bookings', ['session_id'], {
+      name: 'bookings_session_id_index',
+      unique: true, // Ensure uniqueness
     });
 
     await queryInterface.addIndex('bookings', ['created_at'], {

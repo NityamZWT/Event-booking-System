@@ -1,29 +1,62 @@
+const path = require("path");
+const { newEnforcer } = require("casbin");
 const { verifyToken } = require("../utils/jwtHelper");
 const { AuthenticationError, AuthorizationError } = require("../utils/errors");
 
+const MODEL_PATH = path.join(__dirname, "../../policies/model.conf");
+const POLICY_PATH = path.join(__dirname, "../../policies/policy.csv");
+
+let enforcerInstance = null;
+const getEnforcer = async () => {
+  if (!enforcerInstance) {
+    enforcerInstance = await newEnforcer(MODEL_PATH, POLICY_PATH);
+  }
+  return enforcerInstance;
+};
+
+const methodToAction = (method) => {
+  const map = {
+    GET:    "read",
+    POST:   "create",
+    PUT:    "update",
+    PATCH:  "update",
+    DELETE: "delete",
+  };
+  return map[method.toUpperCase()] || method.toLowerCase();
+};
+
+
+const extractResource = (req) => {
+  const base = req.baseUrl || "";          
+  const segments = base.split("/").filter(Boolean);
+  return segments[segments.length - 1]; 
+};
+
 const authenticate = (req, res, next) => {
   try {
+    const PUBLIC_GET_ROUTES = ["/api/events", "/api/events/"];
+    const isPublicGet =
+      PUBLIC_GET_ROUTES.includes(req.baseUrl) && req.method === "GET";
+
     const authHeader = req.headers.authorization || null;
-    const allowedRoutes = ["/api/events", "/api/events/"];
-    console.log((!allowedRoutes.includes(req.baseUrl)) || req.method !== "GET");
-    
-    if (((!authHeader || !authHeader.startsWith("Bearer ")) && (!allowedRoutes.includes(req.baseUrl)) && req.method !== "GET")) {
+    const hasToken = authHeader && authHeader.startsWith("Bearer ");
+
+    if (isPublicGet && !hasToken) {
+      return next(); // allow through without user
+    }
+
+    if (!hasToken) {
       throw new AuthenticationError("No token provided");
     }
 
-    if (allowedRoutes.includes(req.baseUrl) && req.method === "GET" && !authHeader) {
-      return next();
-    }
+    const token = authHeader.split(" ")[1];
+    const decoded = verifyToken(token);
 
-      const token = authHeader.split(" ")[1];
-      const decoded = verifyToken(token);
-      console.log(token, 'token');
-      
-      req.user = {
-        id: decoded.id,
-        email: decoded.email,
-        role: decoded.role,
-      };
+    req.user = {
+      id:    decoded.id,
+      email: decoded.email,
+      role:  decoded.role,  // e.g. "admin", "event_manager", "customer"
+    };
 
     next();
   } catch (error) {
@@ -37,26 +70,37 @@ const authenticate = (req, res, next) => {
   }
 };
 
-const authorize = (...allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return next(new AuthenticationError("User not authenticated"));
-    }
 
-    if (!allowedRoles.includes(req.user.role)) {
-      return next(
-        new AuthorizationError(
-          `Access denied. Required roles: ${allowedRoles.join(", ")}`
-        )
-      );
-    }
+const authorize = () => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return next(new AuthenticationError("User not authenticated"));
+      }
 
-    next();
+      const enforcer  = await getEnforcer();
+      const role      = req.user.role;                // "admin"
+      const resource  = extractResource(req);         // "events"
+      const action    = methodToAction(req.method);   // "create"
+
+      console.log(`[AUTHORIZE] role=${role} | resource=${resource} | action=${action}`);
+
+      const allowed = await enforcer.enforce(role, resource, action);
+
+      if (!allowed) {
+        return next(
+          new AuthorizationError(
+            `Access denied: '${role}' cannot '${action}' on '${resource}'`
+          )
+        );
+      }
+
+      next();
+    } catch (error) {
+      console.error("[AUTHORIZE] Error:", error);
+      next(error);
+    }
   };
 };
 
-
-module.exports = {
-  authenticate,
-  authorize,
-};
+module.exports = { authenticate, authorize };

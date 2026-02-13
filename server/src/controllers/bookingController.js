@@ -1,10 +1,14 @@
 const bookingService = require("../services/bookingService");
-const { createBookingSchema, getUserBookingsSchema } = require("../validators/bookingValidator");
+const {
+  createBookingSchema,
+  getUserBookingsSchema,
+} = require("../validators/bookingValidator");
 const {
   CreatedResponse,
   SuccessResponse,
 } = require("../utils/responseHandler");
 const { ValidationError } = require("../utils/errors");
+const paymentService = require("../services/paymentService");
 
 const createBooking = async (req, res, next) => {
   try {
@@ -13,13 +17,20 @@ const createBooking = async (req, res, next) => {
       stripUnknown: true,
     });
 
-    const booking = await bookingService.createBooking( 
+    const { session_id } = req.body;
+
+    // Verify payment was successful
+    const paymentInfo = await paymentService.verifyPaymentSession(session_id);
+
+    // Create booking in transaction after payment verification
+    const booking = await bookingService.createBooking(
       validatedData,
-      req.user.id
+      req.user.id,
+      paymentInfo.sessionId,
     );
 
     return new CreatedResponse("Booking created successfully", booking).send(
-      res
+      res,
     );
   } catch (error) {
     if (error.name === "ValidationError") {
@@ -51,11 +62,11 @@ const getUserBookings = async (req, res, next) => {
       req.user.role,
       eventId ?? undefined,
       page,
-      limit
+      limit,
     );
 
     return new SuccessResponse("Bookings retrieved successfully", result).send(
-      res
+      res,
     );
   } catch (error) {
     next(error);
@@ -67,11 +78,11 @@ const getBookingById = async (req, res, next) => {
     const booking = await bookingService.getBookingById(
       parseInt(req.params.id),
       req.user.id,
-      req.user.role
+      req.user.role,
     );
 
     return new SuccessResponse("Booking retrieved successfully", booking).send(
-      res
+      res,
     );
   } catch (error) {
     next(error);
@@ -80,13 +91,20 @@ const getBookingById = async (req, res, next) => {
 
 const cancelBooking = async (req, res, next) => {
   try {
+    const bookingId = parseInt(req.params.id);
     const result = await bookingService.cancelBooking(
-      parseInt(req.params.id),
+      bookingId,
       req.user.id,
-      req.user.role
+      req.user.role,
     );
 
-    return new SuccessResponse(result.message).send(res);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        refund: result.refund,
+      },
+    });
   } catch (error) {
     next(error);
   }

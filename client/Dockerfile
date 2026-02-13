@@ -1,15 +1,24 @@
-FROM node:18-alpine
+# ---------- Build stage ----------
+FROM node:20-alpine AS build
+# ↑ upgrade node, Vite warned you
 
 WORKDIR /app
 
 COPY package*.json ./
-
 RUN npm install
 
 COPY . .
-
 RUN npm run build
+# produces /app/dist
 
-EXPOSE 5173
+# ---------- Runtime stage ----------
+FROM node:20-alpine
 
-CMD ["npm", "run", "preview"]
+WORKDIR /app
+
+RUN npm install -g serve
+
+COPY --from=build /app/dist ./dist
+
+EXPOSE 3000
+CMD ["serve", "-s", "dist", "-l", "3000"]

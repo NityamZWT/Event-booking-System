@@ -1,7 +1,11 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppSelector } from "@/store/hook";
-import { useBookings, useCancelBooking } from "@/hooks/useBooking";
+import {
+  useBookings,
+  useCancelBooking,
+  useCreateBooking,
+} from "@/hooks/useBooking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +13,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { UserRole, Booking } from "@/types";
-import {
-  X,
-  CalendarDays,
-  History,
-} from "lucide-react";
+import { X, CalendarDays, History, CheckCircle2 } from "lucide-react";
 import { EventSearchCombobox } from "@/components/common/searchEvent";
 import { BookingCard } from "@/components/bookings/BookingCard";
+
+interface RefundInfo {
+  status: string;
+  amount: number;
+  refundId: string;
+}
 
 export const BookingsPage = () => {
   const [page, setPage] = useState(1);
@@ -25,6 +31,12 @@ export const BookingsPage = () => {
   const [selectedEvent, setSelectedEvent] = useState<string>("all");
   const [selectedEventName, setSelectedEventName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isProcessingStripeReturn, setIsProcessingStripeReturn] = useState(false);
+  const [bookingProcessed, setBookingProcessed] = useState(false);
+  const [refundInfo, setRefundInfo] = useState<RefundInfo | null>(null);
+  const [showRefundInfo, setShowRefundInfo] = useState(false);
+
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
   const { data, isLoading, error, refetch } = useBookings({
@@ -33,6 +45,148 @@ export const BookingsPage = () => {
     eventId: selectedEvent !== "all" ? parseInt(selectedEvent) : undefined,
   });
   const cancelBooking = useCancelBooking();
+  const createBooking = useCreateBooking();
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+
+    if (!sessionId || !user || bookingProcessed) {
+      return;
+    }
+
+    const processBooking = async () => {
+      setBookingProcessed(true);
+      setIsProcessingStripeReturn(true);
+
+      try {
+        const bookingData = localStorage.getItem("pendingBooking");
+
+        if (!bookingData) {
+          console.error("No pending booking data found in localStorage");
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete("session_id");
+          setSearchParams(newSearchParams, { replace: true });
+          return;
+        }
+
+        const { event_id, quantity, attendee_name, booking_amount } =
+          JSON.parse(bookingData);
+
+        await createBooking.mutateAsync({
+          event_id,
+          attendee_name,
+          quantity: Number(quantity),
+          booking_amount,
+          session_id: sessionId,
+        });
+
+        localStorage.removeItem("pendingBooking");
+
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete("session_id");
+        setSearchParams(newSearchParams, { replace: true });
+
+        await refetch();
+      } catch (error) {
+        console.error("Error creating booking:", error);
+        localStorage.removeItem("pendingBooking");
+
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete("session_id");
+        setSearchParams(newSearchParams, { replace: true });
+
+        setBookingProcessed(false);
+      } finally {
+        setIsProcessingStripeReturn(false);
+      }
+    };
+
+    processBooking();
+  }, [searchParams, user, bookingProcessed]);
+
+  useEffect(() => {
+    setBookingProcessed(false);
+  }, [user]);
+
+  useEffect(() => {
+    if (showRefundInfo) {
+      const timer = setTimeout(() => {
+        setShowRefundInfo(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [showRefundInfo]);
+
+  const filteredBookings = useMemo(() => {
+    if (!data?.data?.bookings) return [];
+
+    let filtered = data.data.bookings;
+
+    if (activeTab === "upcoming") {
+      filtered = filtered.filter(
+        (booking: Booking) => !booking.event?.pastEvent,
+      );
+    } else {
+      filtered = filtered.filter(
+        (booking: Booking) => booking.event?.pastEvent,
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (booking: Booking) =>
+          booking.attendee_name.toLowerCase().includes(q) ||
+          booking.event?.title.toLowerCase().includes(q) ||
+          booking.event?.location.toLowerCase().includes(q),
+      );
+    }
+
+    return filtered;
+  }, [data?.data?.bookings, activeTab, searchQuery]);
+
+  const tabCounts = useMemo(() => {
+    if (!data?.data?.bookings) return { upcoming: 0, past: 0 };
+
+    const upcoming = data.data.bookings.filter(
+      (booking: Booking) => !booking.event?.pastEvent,
+    ).length;
+
+    const past = data.data.bookings.filter(
+      (booking: Booking) => booking.event?.pastEvent,
+    ).length;
+
+    return { upcoming, past };
+  }, [data?.data?.bookings]);
+
+  if (isProcessingStripeReturn) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <LoadingSpinner />
+          <p className="text-muted-foreground">Confirming your booking...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
+    console.error("Error loading bookings:", error);
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-destructive mb-2">Error loading bookings</div>
+          <Button variant="outline" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleEventSelect = (event: any) => {
     if (event) {
@@ -52,10 +206,16 @@ export const BookingsPage = () => {
   const handleCancel = async () => {
     if (cancelId) {
       try {
-        await cancelBooking.mutateAsync(cancelId);
+        const result = await cancelBooking.mutateAsync(cancelId);
         await refetch();
         setCancelId(null);
         setCancelBookingTitle("");
+
+        // Show refund notification if refund was processed
+        if (result && typeof result === 'object' && 'data' in result && result.data && typeof result.data === 'object' && 'refund' in result.data) {
+          setRefundInfo((result.data as any).refund);
+          setShowRefundInfo(true);
+        }
       } catch {
         setCancelId(null);
         setCancelBookingTitle("");
@@ -69,50 +229,8 @@ export const BookingsPage = () => {
     setSelectedEventName("");
   };
 
-  const filteredBookings = useMemo(() => {
-    if (!data?.data?.bookings) return [];
-
-    let filtered = data.data.bookings;
-
-    if (activeTab === "upcoming") {
-      filtered = filtered.filter((booking: Booking) => !booking.event?.pastEvent);
-    } else {
-      filtered = filtered.filter((booking: Booking) => booking.event?.pastEvent);
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (booking: Booking) =>
-          booking.attendee_name.toLowerCase().includes(q) ||
-          booking.event?.title.toLowerCase().includes(q) ||
-          booking.event?.location.toLowerCase().includes(q)
-      );
-    }
-
-    return filtered;
-  }, [data?.data?.bookings, activeTab, searchQuery]);
-
-  const hasActiveFilters = selectedEvent !== "all" || searchQuery.trim() !== "";
-
-  const tabCounts = useMemo(() => {
-    if (!data?.data?.bookings) return { upcoming: 0, past: 0 };
-
-    const upcoming = data.data.bookings.filter(
-      (booking: Booking) => !booking.event?.pastEvent
-    ).length;
-    
-    const past = data.data.bookings.filter(
-      (booking: Booking) => booking.event?.pastEvent
-    ).length;
-
-    return { upcoming, past };
-  }, [data?.data?.bookings]);
-
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <div>Error loading bookings</div>;
-
   const bookings = filteredBookings;
+  const hasActiveFilters = selectedEvent !== "all" || searchQuery.trim() !== "";
   const pagination: { totalPages?: number } = data?.data?.pagination || {};
 
   return (
@@ -128,7 +246,12 @@ export const BookingsPage = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="upcoming" value={activeTab} onValueChange={(value) => setActiveTab(value as "upcoming" | "past")} className="space-y-4">
+      <Tabs
+        defaultValue="upcoming"
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as "upcoming" | "past")}
+        className="space-y-4"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <TabsList>
             <TabsTrigger value="upcoming" className="flex items-center gap-2">
@@ -167,19 +290,21 @@ export const BookingsPage = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <div className="w-full">
-              <EventSearchCombobox
-                value={selectedEvent !== "all" ? selectedEvent : undefined}
-                onSelect={handleEventSelect}
-                placeholder="Select an event to filter..."
-                searchPlaceholder="Search events by name..."
-                emptyMessage="No events found. Try a different search."
-                showSelectedInTrigger={true}
-                className="w-full"
-              />
+          {bookings.length === 0 ? null : (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="w-full">
+                <EventSearchCombobox
+                  value={selectedEvent !== "all" ? selectedEvent : undefined}
+                  onSelect={handleEventSelect}
+                  placeholder="Select an event to filter..."
+                  searchPlaceholder="Search events by name..."
+                  emptyMessage="No events found. Try a different search."
+                  showSelectedInTrigger={true}
+                  className="w-full"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {hasActiveFilters && (
             <div className="flex flex-wrap gap-2 items-center">
@@ -216,7 +341,8 @@ export const BookingsPage = () => {
 
           <div className="text-sm text-muted-foreground">
             Showing {bookings.length} of {tabCounts[activeTab]}{" "}
-            {activeTab === "upcoming" ? "upcoming" : "past"} booking{bookings.length !== 1 ? "s" : ""}
+            {activeTab === "upcoming" ? "upcoming" : "past"} booking
+            {bookings.length !== 1 ? "s" : ""}
             {hasActiveFilters && " (filtered)"}
           </div>
         </div>
@@ -346,7 +472,7 @@ export const BookingsPage = () => {
         onOpenChange={(open) => !open && setCancelId(null)}
         onConfirm={handleCancel}
         title="Cancel Booking"
-        description={`Are you sure you want to cancel your booking for "${cancelBookingTitle}"? This action cannot be undone.`}
+        description={`Are you sure you want to cancel your booking for "${cancelBookingTitle}"? A refund will be initiated to your original payment method.`}
         confirmText="Cancel Booking"
         confirmVariant="destructive"
         isLoading={cancelBooking.isPending}
