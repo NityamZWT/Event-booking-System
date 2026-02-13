@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppSelector } from "@/store/hook";
 import {
@@ -18,6 +18,7 @@ import { EventSearchCombobox } from "@/components/common/searchEvent";
 import { BookingCard } from "@/components/bookings/BookingCard";
 
 export const BookingsPage = () => {
+
   const [page, setPage] = useState(1);
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [cancelBookingTitle, setCancelBookingTitle] = useState<string>("");
@@ -28,6 +29,8 @@ export const BookingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isProcessingStripeReturn, setIsProcessingStripeReturn] = useState(false);
   const [bookingProcessed, setBookingProcessed] = useState(false);
+
+
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
   const { data, isLoading, error, refetch } = useBookings({
@@ -38,41 +41,31 @@ export const BookingsPage = () => {
   const cancelBooking = useCancelBooking();
   const createBooking = useCreateBooking();
 
-  // Handle booking creation after Stripe payment success
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
-    
-    // Skip if no session_id, no user, or already processed
+
     if (!sessionId || !user || bookingProcessed) {
       return;
     }
 
     const processBooking = async () => {
-      // Mark as processing
       setBookingProcessed(true);
       setIsProcessingStripeReturn(true);
 
       try {
-        // Get the stored booking data from localStorage
         const bookingData = localStorage.getItem("pendingBooking");
+
         if (!bookingData) {
-          console.error("No pending booking data found");
-          setIsProcessingStripeReturn(false);
+          console.error("No pending booking data found in localStorage");
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete("session_id");
+          setSearchParams(newSearchParams, { replace: true });
           return;
         }
 
         const { event_id, quantity, attendee_name, booking_amount } =
           JSON.parse(bookingData);
 
-        console.log("Creating booking with data:", {
-          event_id,
-          attendee_name,
-          quantity,
-          booking_amount,
-          session_id: sessionId,
-        });
-
-        // Create the booking with the session_id
         await createBooking.mutateAsync({
           event_id,
           attendee_name,
@@ -81,41 +74,76 @@ export const BookingsPage = () => {
           session_id: sessionId,
         });
 
-        // Clear the stored booking data
         localStorage.removeItem("pendingBooking");
 
-        // Clear the session_id from URL immediately
         const newSearchParams = new URLSearchParams(searchParams);
         newSearchParams.delete("session_id");
         setSearchParams(newSearchParams, { replace: true });
 
-        // Refetch bookings
         await refetch();
-
-        console.log("Booking created successfully");
-        
-        // Optional: Show success message
-        // toast.success("Booking confirmed successfully!");
       } catch (error) {
         console.error("Error creating booking:", error);
-        
-        // Clear the stored booking data on error
         localStorage.removeItem("pendingBooking");
-        
-        // Allow retry by resetting the processed state
+
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete("session_id");
+        setSearchParams(newSearchParams, { replace: true });
+
         setBookingProcessed(false);
-        
-        // Optional: Show error message
-        // toast.error("Failed to create booking");
       } finally {
         setIsProcessingStripeReturn(false);
       }
     };
 
     processBooking();
-  }, [searchParams, user, createBooking, refetch, setSearchParams, bookingProcessed]);
+  }, [searchParams, user, bookingProcessed]);
 
-  // Show loading while processing Stripe return
+  useEffect(() => {
+    setBookingProcessed(false);
+  }, [user]);
+
+  const filteredBookings = useMemo(() => {
+    if (!data?.data?.bookings) return [];
+
+    let filtered = data.data.bookings;
+
+    if (activeTab === "upcoming") {
+      filtered = filtered.filter(
+        (booking: Booking) => !booking.event?.pastEvent,
+      );
+    } else {
+      filtered = filtered.filter(
+        (booking: Booking) => booking.event?.pastEvent,
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (booking: Booking) =>
+          booking.attendee_name.toLowerCase().includes(q) ||
+          booking.event?.title.toLowerCase().includes(q) ||
+          booking.event?.location.toLowerCase().includes(q),
+      );
+    }
+
+    return filtered;
+  }, [data?.data?.bookings, activeTab, searchQuery]);
+
+  const tabCounts = useMemo(() => {
+    if (!data?.data?.bookings) return { upcoming: 0, past: 0 };
+
+    const upcoming = data.data.bookings.filter(
+      (booking: Booking) => !booking.event?.pastEvent,
+    ).length;
+
+    const past = data.data.bookings.filter(
+      (booking: Booking) => booking.event?.pastEvent,
+    ).length;
+
+    return { upcoming, past };
+  }, [data?.data?.bookings]);
+
   if (isProcessingStripeReturn) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -127,10 +155,23 @@ export const BookingsPage = () => {
     );
   }
 
-  // Reset bookingProcessed when user changes (for new sessions)
-  useEffect(() => {
-    setBookingProcessed(false);
-  }, [user]);
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
+    console.error("Error loading bookings:", error);
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-destructive mb-2">Error loading bookings</div>
+          <Button variant="outline" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleEventSelect = (event: any) => {
     if (event) {
@@ -167,70 +208,8 @@ export const BookingsPage = () => {
     setSelectedEventName("");
   };
 
-  const filteredBookings = useMemo(() => {
-    if (!data?.data?.bookings) return [];
-
-    let filtered = data.data.bookings;
-
-    if (activeTab === "upcoming") {
-      filtered = filtered.filter(
-        (booking: Booking) => !booking.event?.pastEvent,
-      );
-    } else {
-      filtered = filtered.filter(
-        (booking: Booking) => booking.event?.pastEvent,
-      );
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (booking: Booking) =>
-          booking.attendee_name.toLowerCase().includes(q) ||
-          booking.event?.title.toLowerCase().includes(q) ||
-          booking.event?.location.toLowerCase().includes(q),
-      );
-    }
-
-    return filtered;
-  }, [data?.data?.bookings, activeTab, searchQuery]);
-
-  const hasActiveFilters = selectedEvent !== "all" || searchQuery.trim() !== "";
-
-  const tabCounts = useMemo(() => {
-    if (!data?.data?.bookings) return { upcoming: 0, past: 0 };
-
-    const upcoming = data.data.bookings.filter(
-      (booking: Booking) => !booking.event?.pastEvent,
-    ).length;
-
-    const past = data.data.bookings.filter(
-      (booking: Booking) => booking.event?.pastEvent,
-    ).length;
-
-    return { upcoming, past };
-  }, [data?.data?.bookings]);
-
-  // Add this check - if still loading and we have user
-  if (isLoading && user) {
-    return <LoadingSpinner />;
-  }
-  
-  if (error) {
-    console.error("Error loading bookings:", error);
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="text-destructive mb-2">Error loading bookings</div>
-          <Button variant="outline" onClick={() => refetch()}>
-            Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const bookings = filteredBookings;
+  const hasActiveFilters = selectedEvent !== "all" || searchQuery.trim() !== "";
   const pagination: { totalPages?: number } = data?.data?.pagination || {};
 
   return (
