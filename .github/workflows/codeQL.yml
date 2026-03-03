@@ -1,29 +1,31 @@
 name: CodeQl Example
 
-on: 
-    push:
-        branches:
-            - main
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-    my-codeql-jobs:
-        runs-on: ubuntu-latest
+  my-codeql-jobs:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: step 1
-              run: echo "My_Name=Nityam Patel" >> $GITHUB_OUTPUT
-            
-            - name: step 2
-              run: echo "this is my name:" $My_Name
+    steps:
+      - name: step 1
+        run: echo "My_Name=Nityam Patel" >> $GITHUB_OUTPUT
 
-            - name: step 3 - Checkout Repository
-              uses: actions/checkout@v2
+      - name: step 2
+        run: echo "this is my name:" $My_Name
 
-            - name:  step 4 - Initialize CodeQL
-              uses: github/codeql-action/init@v4
-              with:
-                languages: javascript
+      - name: step 3 - Checkout Repository
+        uses: actions/checkout@v2
 
+      - name: step 4 - Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript
+          # build-mode: none
+          # If you are analyzing a compiled language, you can modify the 'build-mode' for that language to customize how
+          # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
 
-            - name: step 5 - Perform CodeQL Analysis
-              uses: github/codeql-action/analyze@v4
+      - name: step 5 - Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4

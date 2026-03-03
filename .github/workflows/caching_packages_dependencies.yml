@@ -3,7 +3,7 @@ name: Caching Package and Dependencies Example
 on:
   push:
     branches:
-      - staging
+      - main
 
 jobs:
   my-caching-jobs:
