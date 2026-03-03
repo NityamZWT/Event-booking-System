@@ -3,7 +3,7 @@ name: "Dependent Jobs"
 on:
     push:
         branches:
-            - staging
+            - main
 
 jobs:
     my-first-dependent-job:
@@ -17,7 +17,7 @@ jobs:
     my-second-dependent-job:
         name: My Second Dependent Job 
         runs-on: ubuntu-latest
-        # needs: my-first-dependent-job
+        needs: my-first-dependent-job
         steps:
             - name: Second step
               run: "echo ${{secrets.*}}"
