@@ -3,12 +3,12 @@ name: "workflow context"
 on:
   push:
     branches:
-      - main
+      - staging
 
 jobs:
   hello_world:
     name: My first job
-    if: github.repository == 'oct0-org/octo-repo-prod'
+    if: github.repository == 'NityamZWT/Event-booking-System'
     runs-on: ubuntu-latest
     steps:
       - name: "Hello World"
