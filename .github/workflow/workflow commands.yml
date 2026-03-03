@@ -5,7 +5,7 @@ on:
     branches: ['staging']
 
 jobs:
-  first job to run:
+  first_job_to_run:
     runs-on: 'ubuntu-latest'
     steps:
       - name: "grouping logging"
