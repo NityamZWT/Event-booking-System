@@ -2,7 +2,7 @@ name: Default Variable by Dithub Actions
 
 on:
     push:
-        branches: [staging]
+        branches: [main]
 
 jobs:
     my-first-default-env-vars-job:
