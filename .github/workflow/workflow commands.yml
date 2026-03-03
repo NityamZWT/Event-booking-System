@@ -3,7 +3,7 @@ name: "Workflow Commands"
 on:
   push:
     branches:
-      ['Staging']
+      ['staging']
 
 job:
   first job to run:
