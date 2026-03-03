@@ -16,3 +16,7 @@ jobs:
           echo "Branch: ${{ github.ref }}"
           echo "Repository: ${{ github.repository }}"
           echo "Workflow: ${{ github.workflow }}"
+          echo "GITHUB: ${{ github.* }}"
+          echo "ENV: ${{ env.* }}"
+          echo "SECRETS: ${{ secrets.* }}"
+
