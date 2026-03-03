@@ -14,7 +14,7 @@ jobs:
         run: echo "My_Name=Nityam Patel" >> $GITHUB_OUTPUT
 
       - id: step-2
-        run: echo "this is my name:" ${{steps.step-1.outputs}} 
+        run: echo "this is my name:" ${{steps.step-1.outputs.My_Name}} 
 
     #   - name: step 3 - Checkout Repository
     #     uses: actions/checkout@v2
