@@ -1,0 +1,14 @@
+name: "workflow context example"
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  My_first_context_jobs:
+    name: my first context
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: step 1
+        run: echo "Hello {github.action}"
