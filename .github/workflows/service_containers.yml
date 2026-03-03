@@ -1,16 +1,30 @@
 name: Service Container Examples
 
 on:
-    push:
-        branches: [staging]
-# container based service runner - spinner docker container and execute steps with bridge network default
+  push:
+    branches: [staging]
+# container based service runner - spin docker container and execute steps with bridge network default
 jobs:
-    container-based-jobs:
-        runs-on: ubuntu-latest
-        container: node:16-bullseye
-        services:
-            redis:
-                image: redis
-        steps:
-            - id: step-1
-              run: echo "my name is:" ${{job.services.redis.ports}}
+  container-based-jobs:
+    runs-on: ubuntu-latest
+    container: node:16-bullseye
+    services:
+      redis:
+        image: redis
+    steps:
+      - id: step-1
+        run: echo "my first job is:" ${{job.check_run_id}}
+
+    # Runner based service runner - spin docker container and execute steps with host network (we need to explicity map port here but no need of continer)
+
+  runner-based-jobs:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 9000:9000
+    
+    steps:
+        - id: step-2
+          run: echo "my second job is:" ${{job.status}}
