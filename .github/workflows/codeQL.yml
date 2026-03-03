@@ -3,7 +3,7 @@ name: CodeQl Example
 on: 
     push:
         branches:
-            - staging
+            - main
 
 jobs:
     my-codeql-jobs:

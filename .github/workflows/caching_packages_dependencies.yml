@@ -1,0 +1,25 @@
+name: Caching Package and Dependencies Example
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  my-caching-jobs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: step-1
+        run: echo "My_Name=Nityam Patel" >> $GITHUB_OUTPUT
+
+      - id: step-2
+        run: echo "this is my name:" ${{steps.step-1.outputs}} 
+
+    #   - name: step 3 - Checkout Repository
+    #     uses: actions/checkout@v2
+
+      - name: step 4 - Cache node package and dependencies
+        uses: actions/setup-node@v4     # use for build node bundle
+        with:
+            bundler-cache: true # use for cache 
