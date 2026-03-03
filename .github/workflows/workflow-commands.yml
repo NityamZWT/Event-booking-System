@@ -3,7 +3,7 @@ name: "Workflow Commands"
 on:
   push:
     branches:
-      - staging
+      - main
 
 jobs:
   first_job_to_run:

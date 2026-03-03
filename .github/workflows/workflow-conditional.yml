@@ -1,0 +1,21 @@
+name: "workflow context"
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  hello_world:
+    name: My first job
+    if: github.repository == 'oct0-org/octo-repo-prod'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Hello World"
+        run: echo "Hello world!"
+  goodbye:
+    name: My Seconf job
+    runs-on: ubuntu-latest
+    steps:
+      - name: "goodbye world"
+        run: echo "GoodBye World!"
