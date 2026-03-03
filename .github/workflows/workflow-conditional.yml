@@ -3,7 +3,7 @@ name: "workflow context"
 on:
   push:
     branches:
-      - staging
+      - main
 
 jobs:
   hello_world:
