@@ -2,7 +2,7 @@ name: "workflow context example"
 
 on:
   push:
-    branches: [staging]
+    branches: [main]
 
 jobs:
   My_first_context_jobs:

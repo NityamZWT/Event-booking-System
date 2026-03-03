@@ -1,0 +1,23 @@
+name: "Dependent Jobs"
+
+on:
+    push:
+        branches:
+            - staging
+
+jobs:
+    my-first-dependent-job:
+        name: My First Dependent Job
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: First step
+              run: "echo ${{secrets.GITHUB_TOKEN}}"
+
+    my-second-dependent-job:
+        name: My Second Dependent Job 
+        runs-on: ubuntu-latest
+        needs: my-first-dependent-job
+        steps:
+            - name: Second step
+              run: "echo ${{secrets.*}}"
