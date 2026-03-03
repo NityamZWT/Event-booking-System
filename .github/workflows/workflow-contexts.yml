@@ -11,4 +11,8 @@ jobs:
 
     steps:
       - name: Show Context
-        run: echo "Hello ${{github.actor}}"
+        run: |
+          echo "Actor: ${{ github.action }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Workflow: ${{ github.workflow }}"
