@@ -1,7 +1,9 @@
 name: "Workflow Commands"
 
 on:
-  push: ['staging']
+  push:
+    branches:
+      ['Staging']
 
 job:
   first job to run:
