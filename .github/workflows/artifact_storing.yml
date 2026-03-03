@@ -13,10 +13,10 @@ jobs:
       - id: checkout-repo
         uses: actions/checkout@v4
 
-    #   - id: build
-    #     run: |
-    #         cd client
-    #         npm run build
+      - id: build
+        run: |
+            cd client
+            npm run build
 
       - id: artifact-building
         uses: actions/upload-artifact@v4
