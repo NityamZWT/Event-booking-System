@@ -12,4 +12,29 @@ jobs:
             - name: My First Step
               shell: powershell
               run: |
-                echo "github action: $env:GITHUB_REPOSITORY"
+                echo "github action: $env:GITHUB_ACTION"
+                echo "github action: $env:GITHUB_ACTION_REPOSITORY"
+                echo "github action: $env:GITHUB_ACTIONS"
+                echo "github action: $env:GITHUB_ACTOR"
+                echo "github action: $env:GITHUB_ACTOR_ID"
+                echo "github action: $env:GITHUB_ID"
+                echo "github action: $env:GITHUB_API_URL"
+                echo "github action: $env:GITHUB_BASE_REF"
+                echo "github action: $env:GITHUB_ENV"
+                echo "github action: $env:GITHUB_EVENT_NAME"
+                echo "github action: $env:GITHUB_EVENT_PATH"
+                echo "github action: $env:GITHUB_GRAPHQL_URL"
+                echo "github action: $env:GITHUB_HEAD_REF"
+                echo "github action: $env:GITHUB_JOB"
+                echo "github action: $env:GITHUB_OUTPUT"
+                echo "github action: $env:GITHUB_PATH"
+                echo "github action: $env:GITHUB_WORKFLOW"
+                echo "github action: $env:GITHUB_WORKFLOW_REF"
+                echo "github action: $env:GITHUB_WORKFLOW_SHA"
+                echo "github action: $env:RUNNER_ARCH"
+                echo "github action: $env:RUNNER_DEBUG"
+                echo "github action: $env:RUNNER_NAME"
+                echo "github action: $env:RUNNER_OS"
+                echo "github action: $env:RUNNER_TOOL_CACHE"
+
+
