@@ -16,6 +16,7 @@ jobs:
       - id: build
         run: |
             cd client
+            npm install
             npm run build
 
       - id: artifact-building
