@@ -2,7 +2,7 @@ name: Service Container Examples
 
 on:
   push:
-    branches: [staging]
+    branches: [main]
 # container based service runner - spin docker container and execute steps with bridge network default
 jobs:
   container-based-jobs:

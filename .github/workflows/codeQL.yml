@@ -1,0 +1,26 @@
+name: CodeQl Example
+
+on: 
+    push:
+        branches:
+            - staging
+
+jobs:
+    my-codeql-jobs:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: step 1
+              run: echo "My_Name=Nityam Patel" >> $GITHUB_OUTPUT
+            
+            - name: step 2
+              run: echo "this is my name:" $My_Name
+
+            - name: step 3 - Checkout Repository
+              uses: actions/checkout@v2
+
+            - name:  step 4 - Initialize CodeQL
+              uses: github/codeql-action/init@v1
+
+            - name: step 5 - Perform CodeQL Analysis
+              uses: github/codeql-action/analyze@v1
