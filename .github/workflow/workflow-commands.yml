@@ -2,11 +2,13 @@ name: "Workflow Commands"
 
 on:
   push:
-    branches: ['staging']
+    branches:
+      - staging
 
 jobs:
   first_job_to_run:
-    runs-on: 'ubuntu-latest'
+    runs-on: ubuntu-latest
+
     steps:
       - name: "grouping logging"
         run: |
@@ -15,10 +17,8 @@ jobs:
           echo "Msg2"
           echo "::endgroup::"
 
-      - name: "step 1"
-        run: |
-          echo "MY_VAL = hello" >> $GITHUB_ENV
+      - name: "Step 1"
+        run: echo "MY_VAL=hello" >> $GITHUB_ENV
         
       - name: "Step 2"
-        run: |
-          echo $MY_VAL
+        run: echo $MY_VAL
