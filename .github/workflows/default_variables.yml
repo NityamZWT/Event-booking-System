@@ -12,4 +12,4 @@ jobs:
             - name: My First Step
               shell: powershell
               run: |
-                echo "github action: $GITHUB_REPOSITORY"
+                echo "github action: $env:GITHUB_REPOSITORY"
