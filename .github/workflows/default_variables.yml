@@ -36,5 +36,7 @@ jobs:
                 echo "github action: $env:RUNNER_NAME"
                 echo "github action: $env:RUNNER_OS"
                 echo "github action: $env:RUNNER_TOOL_CACHE"
+                echo "github action: $env:GITHUB_TOKEN"
+
 
 
