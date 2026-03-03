@@ -1,0 +1,15 @@
+name: Default Variable by Dithub Actions
+
+on:
+    push:
+        branches: [staging]
+
+jobs:
+    my-first-default-env-vars-job:
+        runs-on: windows-latest
+
+        steps:
+            - name: My First Step
+              shell: powershell
+              run: |
+                echo "github action: $GITHUB_ACTION"
