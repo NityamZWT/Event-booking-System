@@ -3,11 +3,14 @@ name: Service Container Examples
 on:
     push:
         branches: [staging]
-
+# container based service runner - spinner docker container and execute steps with bridge network default
 jobs:
     container-based-jobs:
         runs-on: ubuntu-latest
-        container: node 16-bullseye
+        container: node:16-bullseye
         services:
             redis:
                 image: redis
+        steps:
+            - id: step-1
+              run: echo "my name is:" ${{job.services.redis}}
