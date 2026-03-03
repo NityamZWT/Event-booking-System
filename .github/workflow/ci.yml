@@ -1,43 +1,43 @@
-name: CI Pipeline
+# name: CI Pipeline
 
-on:
-  push:
-    branches: [ staging ]        
-  pull_request:
-    branches: [ staging ]    
-    strategy:
-      # matrix:
-      #   runner: [ubantu-]
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest   
+# on:
+#   push:
+#     branches: [ staging ]        
+#   pull_request:
+#     branches: [ staging ]    
+#     strategy:
+#       matrix:
+#         runner: [ubuntu@latest]
+# jobs:
+#   build-and-test:
+#     runs-on: ubuntu-latest   
 
-    steps:
+#     steps:
       
-      - name: Checkout code
-        uses: actions/checkout@v4
+#       - name: Checkout code
+#         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: docker/setup-docker-action@v2
-        with:
-          node-version: '20'
+#       - name: Setup Node.js
+#         uses: docker/setup-docker-action@v2
+#         with:
+#           node-version: '20'
 
-      # - name: Install client dependencies
-      #   run: npm install
-      #   working-directory: ./client
+#       # - name: Install client dependencies
+#       #   run: npm install
+#       #   working-directory: ./client
 
-      # - name: Install Server Dependencies
-      #   run: npm Install
-      #   working-directory: ./server
+#       # - name: Install Server Dependencies
+#       #   run: npm Install
+#       #   working-directory: ./server
 
-      - name: Run tests
-        run: docker compose up -d --build
+#       - name: Run tests
+#         run: docker compose up -d --build
 
-      # - name: Check app starts
-      #   run: |
-      #     node index.js &
-      #     sleep 3
-      #     kill %1
-        env:
-          JWT_SECRET: test_secret_for_ci
-          PORT: 3000
+#       # - name: Check app starts
+#       #   run: |
+#       #     node index.js &
+#       #     sleep 3
+#       #     kill %1
+#         env:
+#           JWT_SECRET: test_secret_for_ci
+#           PORT: 3000
