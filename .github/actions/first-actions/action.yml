@@ -1,0 +1,31 @@
+name: Composite Custom First Action
+description: This is for Learning Github Custom Actiosn Creation (Composite actions)
+
+inputs:
+  username:
+    description: this is input taking username from that particular step where this action will be called
+    required: true
+    deafult: jooon 
+  
+outputs:
+  final-ans:
+    description: this is for passing final result to output
+    value: ${{ steps.set-greeting-2.outputs.final-ans }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set greeting 1
+      run: echo "Hello ${{inputs.username}} first time"
+      shell: bash
+
+    - name: Set greeting 2
+      id: set-greeting-2
+      run: |
+        echo "Hello ${{inputs.username}} second time"
+        echo "final-ans=GITHUB_ACTOR" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Set greeting 3
+      run: echo "Hello ${{inputs.username}} third time"
+      shell: bash

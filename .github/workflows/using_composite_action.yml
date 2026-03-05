@@ -1,0 +1,16 @@
+name: Using Custom Composite Actions
+
+on:
+    push:
+        branches: [staging]
+
+jobs:
+    composite-action-job:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Running composite actions - first action
+              uses: ./.github/actions/first-actions
+              with:
+                username: Nityam B Patel
+
