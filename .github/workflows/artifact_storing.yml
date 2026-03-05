@@ -3,7 +3,7 @@ name: Artifact Example
 on:
   push:
     branches:
-      - staging
+      - main
 
 jobs:
   my-artifact-storing-jobs:
