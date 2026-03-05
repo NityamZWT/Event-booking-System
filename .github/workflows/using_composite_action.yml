@@ -9,6 +9,10 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
+
+            - name: Checkout Actions
+              uses: actions/checkout@v2 
+
             - name: Running composite actions - first action
               uses: ./.github/actions/first-actions
               with:
