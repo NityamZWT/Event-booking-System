@@ -7,14 +7,19 @@ on:
 jobs:
     composite-action-job:
         runs-on: ubuntu-latest
-
+        # outputs: 
+            # github-author: ${{steps.github-author.outputs.final-ans}}
         steps:
 
             - name: Checkout Actions
               uses: actions/checkout@v2 
 
             - name: Running composite actions - first action
+              id: github-author
               uses: ./.github/actions/first-actions
               with:
                 username: Nityam B Patel
+
+            - name: Print Output of custom action
+              run: echo ${{ steps.github-author.outputs.final-ans }}
 
