@@ -7,6 +7,9 @@ on:
         description: this is taking user name.
         required: true
         type: string
+    secrets:
+      ENV_PRO:
+        required: true
 
 jobs:
   job_1:
@@ -18,3 +21,5 @@ jobs:
 
   job_2:
     uses: NityamZWT/Event-Booking-System/.github/workflows/sub_reusable_workflow.yml@staging
+    secrets:
+      ENV_PROD: ${{secrets.ENV_PRO}}

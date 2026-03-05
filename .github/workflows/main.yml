@@ -9,3 +9,5 @@ jobs:
         uses: NityamZWT/Event-booking-System/.github/workflows/reusable_workflow.yml@staging
         with: 
             username: Nityam Patel
+        secrets:
+            ENV_PRO: ${{ secrets.ENV_PROD }}
