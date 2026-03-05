@@ -1,0 +1,23 @@
+name: Sub Reusable Workflow
+
+on:
+    workflow_call:
+        secrets:
+            ENV_PROD:
+                description: This is for taking ENV credential of github from secrets
+                required: true
+
+        outputs:
+            output_1:
+                description: "The first output"
+                value: ${{ jobs.job-of-sub-reusable-workflow.outputs.output_1 }}
+
+jobs:
+    job-of-sub-reusable-workflow:
+        runs-on: ubuntu-latest
+        outputs:
+            output_1: ${{ steps.set-output.outputs.env_prod }}
+        steps:
+            - name: Set output
+              id: set-output
+              run: echo "env_prod=${{ secrets.ENV_PROD }}" >> $GITHUB_OUTPUT

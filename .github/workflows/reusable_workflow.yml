@@ -15,3 +15,6 @@ jobs:
     steps:
       - name: Print my user name
         run: echo the username is ${{inputs.username}}
+
+  job_2:
+    uses: NityamZWT/Event-Booking-System/.github/workflows/sub_reusable_workflow.yml@staging
