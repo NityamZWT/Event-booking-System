@@ -6,6 +6,6 @@ on:
 
 jobs:
     job-main-1:
-        uses: NityamZWT/Event-booking-System/.github/workflows/reusable-workflow.yml@staging
+        uses: NityamZWT/Event-booking-System/.github/workflows/reusable_workflow.yml@staging
         with: 
             username: Nityam Patel
