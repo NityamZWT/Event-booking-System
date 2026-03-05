@@ -1,0 +1,17 @@
+name: Resuable Workflow Example
+
+on:
+  workflow_call:
+    inputs:
+      username:
+        description: this is taking user name.
+        required: true
+        type: string
+
+jobs:
+  job_1:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print my user name
+        run: echo the username is ${{inputs.username}}

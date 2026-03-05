@@ -1,0 +1,11 @@
+name: Main Workflow
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+    job-main-1:
+        uses: NityamZWT/Event-booking-System/.github/workflows/reusable-workflow.yml@staging
+        with: 
+            username: Nityam Patel
